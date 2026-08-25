@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import problems from "../../../data/problems";
+import CodeEditor from "../../../components/CodeEditor";
 
 export default function SolvePage() {
   const params = useParams();
@@ -30,9 +31,37 @@ public:
     );
   }
 
-  const handleRun = () => {
-    setOutput("Code execution will be connected soon...");
-  };
+  const handleRun = async () => {
+  setOutput("Sending code for execution...");
+
+  try {
+    const response = await fetch("/api/execute", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        code,
+        language,
+        problemId: problem.id,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setOutput(data.error || "Execution request failed.");
+      return;
+    }
+
+    setOutput(
+      `${data.result.verdict}\n\n${data.message}`
+    );
+  } catch (error) {
+    console.error(error);
+    setOutput("Could not connect to execution server.");
+  }
+};
 
   const handleSubmit = () => {
     setOutput("Submission system will be connected soon...");
@@ -123,14 +152,13 @@ public:
 
           </div>
 
-          <textarea
-            className="code-editor"
-            value={code}
-            onChange={(event) =>
-              setCode(event.target.value)
-            }
-            spellCheck="false"
-          />
+          <div className="monaco-container">
+            <CodeEditor
+              code={code}
+              setCode={setCode}
+              language={language}
+            />
+          </div>
 
           <div className="editor-actions">
 

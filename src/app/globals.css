@@ -869,3 +869,9 @@ a {
     order: 3;
   }
 }
+
+.monaco-container {
+  flex: 1;
+  min-height: 400px;
+  overflow: hidden;
+}
