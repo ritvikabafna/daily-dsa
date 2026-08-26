@@ -31,35 +31,59 @@ public:
     );
   }
 
-  const handleRun = async () => {
-  setOutput("Sending code for execution...");
+const handleRun = async () => {
+  setOutput("Running test cases...");
 
   try {
-    const response = await fetch("/api/execute", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        code,
-        language,
-        problemId: problem.id,
-      }),
-    });
+    const response = await fetch(
+      "/api/execute",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          code,
+          language,
+          problemId: problem.id,
+        }),
+      }
+    );
 
     const data = await response.json();
 
     if (!response.ok) {
-      setOutput(data.error || "Execution request failed.");
+      setOutput(
+        data.error || "Execution failed."
+      );
       return;
     }
 
-    setOutput(
-      `${data.result.verdict}\n\n${data.message}`
-    );
+    const result = data.result;
+
+    let testOutput =
+      `${result.verdict}\n\n` +
+      `Passed: ${result.passed}/${result.total}\n\n`;
+
+    result.results.forEach((test) => {
+      testOutput +=
+        `${test.passed ? "✅" : "❌"} ` +
+        `Test Case ${test.testCase}\n`;
+
+      if (!test.passed) {
+        testOutput +=
+          `Expected: ${test.expectedOutput}\n` +
+          `Actual: ${test.actualOutput}\n\n`;
+      }
+    });
+
+    setOutput(testOutput);
   } catch (error) {
     console.error(error);
-    setOutput("Could not connect to execution server.");
+
+    setOutput(
+      "Could not connect to execution server."
+    );
   }
 };
 
