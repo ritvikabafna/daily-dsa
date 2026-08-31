@@ -22,6 +22,22 @@ export async function evaluateTestCases(
 
     const result = await runTest(testCase);
 
+    // Execution failed
+    if (!result.success) {
+      results.push({
+        testCase: i + 1,
+        input: testCase.input,
+        expectedOutput: testCase.expectedOutput,
+        actualOutput: result.output || "",
+        passed: false,
+        verdict: result.verdict,
+        error: result.error || null,
+      });
+
+      break;
+    }
+
+    // Compare normal output
     const passed = compareOutput(
       result.output,
       testCase.expectedOutput
@@ -30,10 +46,12 @@ export async function evaluateTestCases(
     results.push({
       testCase: i + 1,
       input: testCase.input,
-      expectedOutput:
-        testCase.expectedOutput,
+      expectedOutput: testCase.expectedOutput,
       actualOutput: result.output,
       passed,
+      verdict: passed
+        ? "PASSED"
+        : "WRONG_ANSWER",
       error: result.error || null,
     });
 
@@ -46,13 +64,22 @@ export async function evaluateTestCases(
     (result) => result.passed
   ).length;
 
+  const failedResult = results.find(
+    (result) => !result.passed
+  );
+
+  let verdict = "ACCEPTED";
+
+  if (failedResult) {
+    verdict =
+      failedResult.verdict ||
+      "WRONG_ANSWER";
+  }
+
   return {
     passed: passedCount,
     total: testCases.length,
     results,
-    verdict:
-      passedCount === testCases.length
-        ? "ACCEPTED"
-        : "WRONG_ANSWER",
+    verdict,
   };
 }
