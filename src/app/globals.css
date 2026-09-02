@@ -816,11 +816,53 @@ a {
 /* ================= OUTPUT ================= */
 
 .output-panel {
-  min-height: 140px;
+  margin-top: 20px;
   padding: 20px;
-  background: #ffffff;
-  color: #111827;
-  overflow-y: auto;
+  background: #f8f9fa;
+  border-top: 1px solid #ddd;
+}
+
+.result-summary {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+
+.test-case {
+  padding: 12px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  background: white;
+  border: 1px solid #ddd;
+}
+
+.test-case.passed {
+  border-left: 4px solid #22c55e;
+}
+
+.test-case.failed {
+  border-left: 4px solid #ef4444;
+}
+
+.test-details {
+  margin-top: 10px;
+  padding: 10px;
+  background: #f5f5f5;
+  font-size: 14px;
+}
+
+.test-details p {
+  margin: 6px 0;
+}
+
+.error-message {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.output-placeholder {
+  color: #777;
 }
 
 .output-panel h3 {
@@ -874,4 +916,47 @@ a {
   flex: 1;
   min-height: 400px;
   overflow: hidden;
+}
+
+html,
+body {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.solve-page {
+  min-height: 100vh;
+  overflow-y: auto;
+}
+
+.solve-workspace {
+  min-height: 0;
+}
+html,
+body {
+  min-height: 100%;
+  height: auto;
+  overflow-y: auto !important;
+}
+
+.solve-page {
+  min-height: 100vh;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+.solve-workspace {
+  height: auto !important;
+  min-height: 600px;
+  overflow: visible !important;
+}
+
+.editor-panel {
+  height: auto !important;
+  overflow: visible !important;
+}
+
+.output-panel {
+  height: auto !important;
+  overflow: visible !important;
 }

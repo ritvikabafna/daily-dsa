@@ -55,9 +55,7 @@ export async function evaluateTestCases(
       error: result.error || null,
     });
 
-    if (!passed) {
-      break;
-    }
+    
   }
 
   const passedCount = results.filter(

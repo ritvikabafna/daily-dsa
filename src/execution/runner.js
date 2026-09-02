@@ -5,7 +5,8 @@ import path from "path";
 import crypto from "crypto";
 
 const TIME_LIMIT = 5000;
-const OUTPUT_LIMIT = 1024 * 1024; // 1 MB
+const OUTPUT_LIMIT = 1024 * 1024;
+const MEMORY_LIMIT = "256m";
 
 export async function runCpp(code, input = "") {
   const id = crypto.randomUUID();
@@ -30,7 +31,7 @@ export async function runCpp(code, input = "") {
       "--network",
       "none",
       "--memory",
-      "256m",
+MEMORY_LIMIT,
       "--cpus",
       "1",
       "--pids-limit",
@@ -75,25 +76,25 @@ export async function runCpp(code, input = "") {
     // =========================
 
     const executeArgs = [
-      "run",
-      "--name",
-      containerName,
-      "--rm",
-      "-i",
-      "--network",
-      "none",
-      "--memory",
-      "256m",
-      "--cpus",
-      "1",
-      "--pids-limit",
-      "64",
-      "-v",
-      `${tempDir}:/workspace`,
-      "gcc:latest",
-      "/workspace/main",
-    ];
-
+  "run",
+  "--name",
+  containerName,
+  "-i",
+  "--network",
+  "none",
+  "--memory",
+  MEMORY_LIMIT,
+  "--memory-swap",
+  MEMORY_LIMIT,
+  "--cpus",
+  "1",
+  "--pids-limit",
+  "64",
+  "-v",
+  `${tempDir}:/workspace`,
+  "gcc:latest",
+  "/workspace/main",
+];
     const executeResult = await executeDocker(
       executeArgs,
       input,
@@ -145,6 +146,19 @@ export async function runCpp(code, input = "") {
     // =========================
     // RUNTIME ERROR
     // =========================
+
+    // =========================
+// MEMORY LIMIT
+// =========================
+
+if (executeResult.oomKilled) {
+  return {
+    success: false,
+    verdict: "MEMORY_LIMIT_EXCEEDED",
+    output: executeResult.stdout,
+    error: "Program exceeded the memory limit.",
+  };
+}
 
     if (executeResult.exitCode !== 0) {
       return {
@@ -262,19 +276,26 @@ function executeDocker(
     // PROCESS CLOSE
     // =========================
 
-    child.on("close", (exitCode) => {
-      if (finished) return;
+  child.on("close", async (exitCode) => {
+  if (finished) return;
 
-      finished = true;
+  finished = true;
 
-      resolve({
-        stdout,
-        stderr,
-        exitCode,
-        timedOut,
-        outputLimitExceeded,
-      });
-    });
+  let oomKilled = false;
+
+  if (containerName) {
+    oomKilled = await checkOOMKilled(containerName);
+  }
+
+  resolve({
+    stdout,
+    stderr,
+    exitCode,
+    timedOut,
+    outputLimitExceeded,
+    oomKilled,
+  });
+});
 
     // =========================
     // SEND INPUT
@@ -335,6 +356,36 @@ function removeContainer(containerName) {
 
     remove.on("error", () => {
       resolve();
+    });
+  });
+}
+function checkOOMKilled(containerName) {
+  return new Promise((resolve) => {
+    const inspect = spawn(
+      "docker",
+      [
+        "inspect",
+        "--format",
+        "{{.State.OOMKilled}}",
+        containerName,
+      ],
+      {
+        windowsHide: true,
+      }
+    );
+
+    let output = "";
+
+    inspect.stdout.on("data", (data) => {
+      output += data.toString();
+    });
+
+    inspect.on("close", () => {
+      resolve(output.trim() === "true");
+    });
+
+    inspect.on("error", () => {
+      resolve(false);
     });
   });
 }

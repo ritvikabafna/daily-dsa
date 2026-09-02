@@ -21,7 +21,7 @@ public:
   );
 
   const [language, setLanguage] = useState("cpp");
-  const [output, setOutput] = useState("");
+ const [output, setOutput] = useState(null);
 
   if (!problem) {
     return (
@@ -32,64 +32,47 @@ public:
   }
 
 const handleRun = async () => {
-  setOutput("Running test cases...");
+  setOutput({
+    loading: true,
+  });
 
   try {
-    const response = await fetch(
-      "/api/execute",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          code,
-          language,
-          problemId: problem.id,
-        }),
-      }
-    );
+    const response = await fetch("/api/execute", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        code,
+        language,
+        problemId: problem.id,
+      }),
+    });
 
     const data = await response.json();
 
-    if (!response.ok) {
-      setOutput(
-        data.error || "Execution failed."
-      );
+    console.log("Execution API response:", data);
+
+    if (!response.ok || !data.success) {
+      setOutput({
+        error: data.error || "Unknown execution error.",
+      });
       return;
     }
 
-    const result = data.result;
-
-    let testOutput =
-      `${result.verdict}\n\n` +
-      `Passed: ${result.passed}/${result.total}\n\n`;
-
-    result.results.forEach((test) => {
-      testOutput +=
-        `${test.passed ? "✅" : "❌"} ` +
-        `Test Case ${test.testCase}\n`;
-
-      if (!test.passed) {
-        testOutput +=
-          `Expected: ${test.expectedOutput}\n` +
-          `Actual: ${test.actualOutput}\n\n`;
-      }
-    });
-
-    setOutput(testOutput);
+    setOutput(data.result);
   } catch (error) {
-    console.error(error);
+    console.error("Frontend execution error:", error);
 
-    setOutput(
-      "Could not connect to execution server."
-    );
+    setOutput({
+      error: "Could not connect to execution server.",
+    });
   }
 };
 
-  const handleSubmit = () => {
-    setOutput("Submission system will be connected soon...");
-  };
+  const handleSubmit = async () => {
+  await handleRun();
+};
 
   return (
     <main className="solve-page">
@@ -204,17 +187,75 @@ const handleRun = async () => {
 
           <div className="output-panel">
 
-            <h3>Test Result</h3>
+  <h3>Test Result</h3>
 
-            {output ? (
-              <p>{output}</p>
-            ) : (
-              <p className="output-placeholder">
-                Run your code to see the result.
-              </p>
+  {!output && (
+    <p className="output-placeholder">
+      Run your code to see the result.
+    </p>
+  )}
+
+  {output?.loading && (
+    <p>Running test cases...</p>
+  )}
+
+  {output?.error && (
+    <p className="error-message">
+      {output.error}
+    </p>
+  )}
+
+  {output && !output.loading && !output.error && (
+    <>
+      <div className="result-summary">
+        <strong>{output.verdict}</strong>
+        <span>
+          Passed: {output.passed}/{output.total}
+        </span>
+      </div>
+
+      <div className="test-results">
+        {output.results.map((test) => (
+          <div
+            className={`test-case ${
+              test.passed ? "passed" : "failed"
+            }`}
+            key={test.testCase}
+          >
+            <strong>
+              {test.passed ? "✅" : "❌"} Test Case {test.testCase}
+            </strong>
+
+            {!test.passed && (
+              <div className="test-details">
+                <p>
+                  <strong>Input:</strong> {test.input}
+                </p>
+
+                <p>
+                  <strong>Expected:</strong>{" "}
+                  {test.expectedOutput}
+                </p>
+
+                <p>
+                  <strong>Actual:</strong>{" "}
+                  {test.actualOutput}
+                </p>
+
+                {test.error && (
+                  <p>
+                    <strong>Error:</strong> {test.error}
+                  </p>
+                )}
+              </div>
             )}
-
           </div>
+        ))}
+      </div>
+    </>
+  )}
+
+</div>
 
         </section>
 
