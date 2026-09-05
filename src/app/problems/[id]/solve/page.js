@@ -21,7 +21,8 @@ public:
   );
 
   const [language, setLanguage] = useState("cpp");
- const [output, setOutput] = useState(null);
+  const [output, setOutput] = useState(null);
+  const [running, setRunning] = useState(false);
 
   if (!problem) {
     return (
@@ -31,48 +32,54 @@ public:
     );
   }
 
-const handleRun = async () => {
-  setOutput({
-    loading: true,
-  });
+  const handleRun = async () => {
+    if (running) return;
 
-  try {
-    const response = await fetch("/api/execute", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        code,
-        language,
-        problemId: problem.id,
-      }),
-    });
-
-    const data = await response.json();
-
-    console.log("Execution API response:", data);
-
-    if (!response.ok || !data.success) {
-      setOutput({
-        error: data.error || "Unknown execution error.",
-      });
-      return;
-    }
-
-    setOutput(data.result);
-  } catch (error) {
-    console.error("Frontend execution error:", error);
+    setRunning(true);
 
     setOutput({
-      error: "Could not connect to execution server.",
+      loading: true,
     });
-  }
-};
+
+    try {
+      const response = await fetch("/api/execute", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          code,
+          language,
+          problemId: problem.id,
+        }),
+      });
+
+      const data = await response.json();
+
+      console.log("Execution API response:", data);
+
+      if (!response.ok || !data.success) {
+        setOutput({
+          error: data.error || "Unknown execution error.",
+        });
+        return;
+      }
+
+      setOutput(data.result);
+    } catch (error) {
+      console.error("Frontend execution error:", error);
+
+      setOutput({
+        error: "Could not connect to execution server.",
+      });
+    } finally {
+      setRunning(false);
+    }
+  };
 
   const handleSubmit = async () => {
-  await handleRun();
-};
+    await handleRun();
+  };
 
   return (
     <main className="solve-page">
@@ -110,7 +117,10 @@ const handleRun = async () => {
           <h3>Examples</h3>
 
           {problem.examples.map((example, index) => (
-            <div className="solve-example" key={index}>
+            <div
+              className="solve-example"
+              key={index}
+            >
               <strong>
                 Example {index + 1}
               </strong>
@@ -128,11 +138,13 @@ const handleRun = async () => {
           <h3>Constraints</h3>
 
           <ul>
-            {problem.constraints.map((constraint, index) => (
-              <li key={index}>
-                {constraint}
-              </li>
-            ))}
+            {problem.constraints.map(
+              (constraint, index) => (
+                <li key={index}>
+                  {constraint}
+                </li>
+              )
+            )}
           </ul>
 
         </section>
@@ -149,9 +161,18 @@ const handleRun = async () => {
                 setLanguage(event.target.value)
               }
             >
-              <option value="cpp">C++</option>
-              <option value="python">Python</option>
-              <option value="java">Java</option>
+              <option value="cpp">
+                C++
+              </option>
+
+              <option value="python">
+                Python
+              </option>
+
+              <option value="java">
+                Java
+              </option>
+
               <option value="javascript">
                 JavaScript
               </option>
@@ -172,90 +193,130 @@ const handleRun = async () => {
             <button
               className="run-button"
               onClick={handleRun}
+              disabled={running}
             >
-              ▶ Run Code
+              {running
+                ? "Running..."
+                : "▶ Run Code"}
             </button>
 
             <button
               className="submit-button"
               onClick={handleSubmit}
+              disabled={running}
             >
-              Submit
+              {running
+                ? "Running..."
+                : "Submit"}
             </button>
 
           </div>
 
           <div className="output-panel">
 
-  <h3>Test Result</h3>
+            <h3>Test Result</h3>
 
-  {!output && (
-    <p className="output-placeholder">
-      Run your code to see the result.
-    </p>
-  )}
-
-  {output?.loading && (
-    <p>Running test cases...</p>
-  )}
-
-  {output?.error && (
-    <p className="error-message">
-      {output.error}
-    </p>
-  )}
-
-  {output && !output.loading && !output.error && (
-    <>
-      <div className="result-summary">
-        <strong>{output.verdict}</strong>
-        <span>
-          Passed: {output.passed}/{output.total}
-        </span>
-      </div>
-
-      <div className="test-results">
-        {output.results.map((test) => (
-          <div
-            className={`test-case ${
-              test.passed ? "passed" : "failed"
-            }`}
-            key={test.testCase}
-          >
-            <strong>
-              {test.passed ? "✅" : "❌"} Test Case {test.testCase}
-            </strong>
-
-            {!test.passed && (
-              <div className="test-details">
-                <p>
-                  <strong>Input:</strong> {test.input}
-                </p>
-
-                <p>
-                  <strong>Expected:</strong>{" "}
-                  {test.expectedOutput}
-                </p>
-
-                <p>
-                  <strong>Actual:</strong>{" "}
-                  {test.actualOutput}
-                </p>
-
-                {test.error && (
-                  <p>
-                    <strong>Error:</strong> {test.error}
-                  </p>
-                )}
-              </div>
+            {!output && (
+              <p className="output-placeholder">
+                Run your code to see the result.
+              </p>
             )}
-          </div>
-        ))}
-      </div>
-    </>
-  )}
 
-</div>
+            {output?.loading && (
+              <p>
+                Running test cases...
+              </p>
+            )}
+
+            {output?.error && (
+              <p className="error-message">
+                {output.error}
+              </p>
+            )}
+
+            {output &&
+              !output.loading &&
+              !output.error && (
+                <>
+                  <div className="result-summary">
+
+                    <strong>
+                      {output.verdict}
+                    </strong>
+
+                    <span>
+                      Passed: {output.passed}/
+                      {output.total}
+                    </span>
+
+                  </div>
+
+                  <div className="test-results">
+
+                    {output.results.map(
+                      (test) => (
+                        <div
+                          className={`test-case ${
+                            test.passed
+                              ? "passed"
+                              : "failed"
+                          }`}
+                          key={test.testCase}
+                        >
+
+                          <strong>
+                            {test.passed
+                              ? "✅"
+                              : "❌"}{" "}
+                            Test Case{" "}
+                            {test.testCase}
+                          </strong>
+
+                          {!test.passed && (
+                            <div className="test-details">
+
+                              <p>
+                                <strong>
+                                  Input:
+                                </strong>{" "}
+                                {test.input}
+                              </p>
+
+                              <p>
+                                <strong>
+                                  Expected:
+                                </strong>{" "}
+                                {test.expectedOutput}
+                              </p>
+
+                              <p>
+                                <strong>
+                                  Actual:
+                                </strong>{" "}
+                                {test.actualOutput}
+                              </p>
+
+                              {test.error && (
+                                <p>
+                                  <strong>
+                                    Error:
+                                  </strong>{" "}
+                                  {test.error}
+                                </p>
+                              )}
+
+                            </div>
+                          )}
+
+                        </div>
+                      )
+                    )}
+
+                  </div>
+                </>
+              )}
+
+          </div>
 
         </section>
 
