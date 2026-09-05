@@ -12,13 +12,15 @@ export default function SolvePage() {
     (item) => item.id === Number(params.id)
   );
 
-  const [code, setCode] = useState(
-`class Solution {
-public:
-    // Write your solution here
+ const [code, setCode] = useState(
+`#include <iostream>
+using namespace std;
 
-};`
-  );
+int main() {
+
+    return 0;
+}`
+);
 
   const [language, setLanguage] = useState("cpp");
   const [output, setOutput] = useState(null);
@@ -156,27 +158,13 @@ public:
           <div className="editor-header">
 
             <select
-              value={language}
-              onChange={(event) =>
-                setLanguage(event.target.value)
-              }
-            >
-              <option value="cpp">
-                C++
-              </option>
-
-              <option value="python">
-                Python
-              </option>
-
-              <option value="java">
-                Java
-              </option>
-
-              <option value="javascript">
-                JavaScript
-              </option>
-            </select>
+  value={language}
+  onChange={(event) =>
+    setLanguage(event.target.value)
+  }
+>
+  <option value="cpp">C++</option>
+</select>
 
           </div>
 
