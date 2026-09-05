@@ -29,6 +29,27 @@ const problems = [
     ],
 
     tags: ["Array", "Hash Table"],
+
+    testCases: [
+  {
+    input: `4
+2 7 11 15
+9`,
+    expectedOutput: "0 1"
+  },
+  {
+    input: `3
+3 2 4
+6`,
+    expectedOutput: "1 2"
+  },
+  {
+    input: `2
+3 3
+6`,
+    expectedOutput: "0 1"
+  }
+]
   },
 
   {
@@ -59,7 +80,25 @@ const problems = [
     ],
 
     tags: ["Array", "Dynamic Programming"],
+        testCases: [
+      {
+        input: `6
+7 1 5 3 6 4`,
+        expectedOutput: "5",
+      },
+      {
+        input: `5
+7 6 4 3 1`,
+        expectedOutput: "0",
+      },
+      {
+        input: `5
+2 4 1 7 5`,
+        expectedOutput: "6",
+      },
+    ],
   },
+  
 
   {
     id: 3,
@@ -89,6 +128,24 @@ const problems = [
     ],
 
     tags: ["Array", "Hash Table", "Sorting"],
+
+testCases: [
+  {
+    input: `4
+1 2 3 1`,
+    expectedOutput: "true",
+  },
+  {
+    input: `4
+1 2 3 4`,
+    expectedOutput: "false",
+  },
+  {
+    input: `5
+1 2 3 4 5`,
+    expectedOutput: "false",
+  },
+],
   },
 ];
 
