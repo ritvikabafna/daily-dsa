@@ -1,11 +1,27 @@
+"use client";
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import problems from "../../data/problems";
 
-export default async function ProblemPage({ params }) {
-  const { id } = await params;
+export default function ProblemPage() {
+  const params = useParams();
+
+  const [solved, setSolved] = useState(false);
 
   const problem = problems.find(
-    (item) => item.id === Number(id)
+    (item) => item.id === Number(params.id)
   );
+
+  useEffect(() => {
+    if (problem) {
+      const isSolved =
+        localStorage.getItem(
+          `problem-${problem.id}-solved`
+        ) === "true";
+
+      setSolved(isSolved);
+    }
+  }, [problem]);
 
   if (!problem) {
     return (
@@ -42,8 +58,8 @@ export default async function ProblemPage({ params }) {
           </span>
 
           <span>
-            Status: ○ Unsolved
-          </span>
+  Status: {solved ? "✓ Solved" : "○ Unsolved"}
+</span>
         </div>
 
         <section className="problem-section">

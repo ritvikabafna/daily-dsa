@@ -1,12 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import problems from "../data/problems";
 
 export default function ProblemsPage() {
   const [search, setSearch] = useState("");
   const [difficulty, setDifficulty] = useState("All");
   const [topic, setTopic] = useState("All");
+
+  const [solvedProblems, setSolvedProblems] = useState([]);
+
+useEffect(() => {
+  const solved = problems
+    .filter(
+      (problem) =>
+        localStorage.getItem(
+          `problem-${problem.id}-solved`
+        ) === "true"
+    )
+    .map((problem) => problem.id);
+
+  setSolvedProblems(solved);
+}, []);
 
   const topics = ["All", ...new Set(problems.map((problem) => problem.topic))];
 
@@ -103,11 +118,15 @@ export default function ProblemsPage() {
 
                 <td>{problem.acceptance}%</td>
 
-                <td>
-                  <span className="status">
-                    ○ Unsolved
-                  </span>
-                </td>
+                
+             <td>
+  <span className="status">
+    {solvedProblems.includes(problem.id)
+      ? "✓ Solved"
+      : "○ Unsolved"}
+  </span>
+</td>
+              
               </tr>
             ))}
           </tbody>

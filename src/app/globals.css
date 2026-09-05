@@ -960,3 +960,116 @@ body {
   height: auto !important;
   overflow: visible !important;
 }
+
+/* =========================
+   Problem Detail Page
+   ========================= */
+
+.problem-page {
+  min-height: 100vh;
+  padding: 40px 20px;
+}
+
+.problem-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 30px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.problem-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.problem-top h1 {
+  margin: 5px 0 0;
+  font-size: 32px;
+}
+
+.problem-topic {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.problem-meta {
+  display: flex;
+  gap: 25px;
+  padding: 18px 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.problem-section {
+  margin-top: 30px;
+}
+
+.problem-section h2 {
+  margin-bottom: 12px;
+  font-size: 21px;
+}
+
+.problem-section p {
+  line-height: 1.7;
+}
+
+.example-box {
+  margin-top: 15px;
+  padding: 16px;
+  background: #f8f9fa;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.example-box h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.problem-section ul {
+  padding-left: 22px;
+}
+
+.problem-section li {
+  margin-bottom: 8px;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tags span {
+  padding: 6px 12px;
+  background: #f1f5f9;
+  border-radius: 20px;
+  font-size: 13px;
+}
+
+.solve-section {
+  margin-top: 35px;
+  padding-top: 25px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.solve-button {
+  display: inline-block;
+  padding: 12px 22px;
+  background: #111827;
+  color: white;
+  text-decoration: none;
+  border-radius: 7px;
+  font-weight: 600;
+}
+
+.solve-button:hover {
+  opacity: 0.9;
+}

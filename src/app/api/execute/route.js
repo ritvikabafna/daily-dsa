@@ -1,5 +1,5 @@
 import { runCpp } from "../../../execution/runner";
-import { evaluateTestCases } from "../../execution/testRunner";
+import { evaluateTestCases } from "../../../execution/testRunner";
 import problems from "../../data/problems";
 
 export async function POST(request) {

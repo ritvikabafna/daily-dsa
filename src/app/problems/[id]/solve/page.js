@@ -1,18 +1,33 @@
 "use client";
 
-import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import problems from "../../../data/problems";
 import CodeEditor from "../../../components/CodeEditor";
 
 export default function SolvePage() {
   const params = useParams();
+  const router = useRouter();
 
   const problem = problems.find(
     (item) => item.id === Number(params.id)
   );
 
- const [code, setCode] = useState(
+ const [code, setCode] = useState("");
+
+  const [language, setLanguage] = useState("cpp");
+  const [output, setOutput] = useState(null);
+  const [running, setRunning] = useState(false);
+
+  const storageKey = `problem-${problem.id}-code`;
+
+useEffect(() => {
+  const savedCode = localStorage.getItem(storageKey);
+
+  if (savedCode !== null) {
+    setCode(savedCode);
+  } else {
+    setCode(
 `#include <iostream>
 using namespace std;
 
@@ -20,19 +35,23 @@ int main() {
 
     return 0;
 }`
-);
-
-  const [language, setLanguage] = useState("cpp");
-  const [output, setOutput] = useState(null);
-  const [running, setRunning] = useState(false);
-
-  if (!problem) {
-    return (
-      <main>
-        <h1>Problem Not Found</h1>
-      </main>
     );
   }
+}, [storageKey]);
+
+useEffect(() => {
+  if (code !== "") {
+    localStorage.setItem(storageKey, code);
+  }
+}, [storageKey, code]);
+
+if (!problem) {
+  return (
+    <main>
+      <h1>Problem Not Found</h1>
+    </main>
+  );
+}
 
   const handleRun = async () => {
     if (running) return;
@@ -68,6 +87,13 @@ int main() {
       }
 
       setOutput(data.result);
+
+if (data.result.verdict === "ACCEPTED") {
+  localStorage.setItem(
+    `problem-${problem.id}-solved`,
+    "true"
+  );
+}
     } catch (error) {
       console.error("Frontend execution error:", error);
 
@@ -175,6 +201,40 @@ int main() {
               language={language}
             />
           </div>
+
+          <div className="problem-navigation">
+  <button
+    onClick={() => {
+      const previousProblem = problems.find(
+        (item) => item.id === problem.id - 1
+      );
+
+      if (previousProblem) {
+        router.push(`/problems/${previousProblem.id}/solve`);
+      }
+    }}
+    disabled={problem.id === 1}
+  >
+    ← Previous
+  </button>
+
+  <button
+    onClick={() => {
+      const nextProblem = problems.find(
+        (item) => item.id === problem.id + 1
+      );
+
+      if (nextProblem) {
+        router.push(`/problems/${nextProblem.id}/solve`);
+      }
+    }}
+    disabled={
+      problem.id === problems[problems.length - 1].id
+    }
+  >
+    Next →
+  </button>
+</div>
 
           <div className="editor-actions">
 
