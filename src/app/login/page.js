@@ -2,31 +2,30 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
-export default function SignupPage() {
+export default function LoginPage() {
   const router = useRouter();
 
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSignup = async (event) => {
+  const handleLogin = async (event) => {
     event.preventDefault();
 
     setLoading(true);
     setMessage("");
 
     try {
-      const response = await fetch("/api/auth/signup", {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name,
           email,
           password,
         }),
@@ -35,17 +34,17 @@ export default function SignupPage() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        setMessage(data.message || "Signup failed.");
+        setMessage(data.message || "Login failed.");
         return;
       }
 
-      setMessage("Account created successfully!");
+      setMessage("Login successful!");
 
       setTimeout(() => {
-        router.push("/login");
+        router.push("/");
       }, 1000);
     } catch (error) {
-      console.error("Signup frontend error:", error);
+      console.error("Login frontend error:", error);
 
       setMessage("Something went wrong.");
     } finally {
@@ -56,25 +55,11 @@ export default function SignupPage() {
   return (
     <main className="auth-page">
       <div className="auth-container">
-        <h1>Create Account</h1>
+        <h1>Welcome Back</h1>
 
-        <p>Start your DSA journey today.</p>
+        <p>Login to continue your DSA journey.</p>
 
-        <form onSubmit={handleSignup}>
-          <div className="auth-field">
-            <label>Name</label>
-
-            <input
-              type="text"
-              placeholder="Enter your name"
-              value={name}
-              onChange={(event) =>
-                setName(event.target.value)
-              }
-              required
-            />
-          </div>
-
+        <form onSubmit={handleLogin}>
           <div className="auth-field">
             <label>Email</label>
 
@@ -94,7 +79,7 @@ export default function SignupPage() {
 
             <input
               type="password"
-              placeholder="Create a password"
+              placeholder="Enter your password"
               value={password}
               onChange={(event) =>
                 setPassword(event.target.value)
@@ -107,7 +92,7 @@ export default function SignupPage() {
             type="submit"
             disabled={loading}
           >
-            {loading ? "Creating Account..." : "Sign Up"}
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
@@ -118,8 +103,8 @@ export default function SignupPage() {
         )}
 
         <p className="auth-link">
-          Already have an account?{" "}
-          <a href="/login">Login</a>
+          Don&apos;t have an account?{" "}
+          <Link href="/signup">Sign Up</Link>
         </p>
       </div>
     </main>

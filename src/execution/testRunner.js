@@ -16,11 +16,14 @@ export async function evaluateTestCases(
   runTest
 ) {
   const results = [];
+  let totalRuntimeMs = 0;
 
   for (let i = 0; i < testCases.length; i++) {
     const testCase = testCases[i];
 
     const result = await runTest(testCase);
+    const runtimeMs = result.executionTimeMs || 0;
+    totalRuntimeMs += runtimeMs;
 
     // Execution failed
     if (!result.success) {
@@ -32,6 +35,7 @@ export async function evaluateTestCases(
         passed: false,
         verdict: result.verdict,
         error: result.error || null,
+        runtimeMs,
       });
 
       break;
@@ -53,9 +57,8 @@ export async function evaluateTestCases(
         ? "PASSED"
         : "WRONG_ANSWER",
       error: result.error || null,
+      runtimeMs,
     });
-
-    
   }
 
   const passedCount = results.filter(
@@ -79,5 +82,6 @@ export async function evaluateTestCases(
     total: testCases.length,
     results,
     verdict,
+    runtimeMs: totalRuntimeMs,
   };
 }

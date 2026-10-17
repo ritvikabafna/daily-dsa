@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import problems from "../../data/problems";
 
 export default function ProblemPage() {
@@ -14,12 +15,31 @@ export default function ProblemPage() {
 
   useEffect(() => {
     if (problem) {
-      const isSolved =
-        localStorage.getItem(
-          `problem-${problem.id}-solved`
-        ) === "true";
+      const timer = setTimeout(() => {
+        const isSolved =
+          localStorage.getItem(
+            `problem-${problem.id}-solved`
+          ) === "true";
 
-      setSolved(isSolved);
+        setSolved(isSolved);
+      }, 0);
+
+      fetch("/api/auth/me")
+        .then((res) => res.json())
+        .then((data) => {
+          if (
+            data.success &&
+            data.user &&
+            Array.isArray(data.user.solvedProblems) &&
+            data.user.solvedProblems.includes(problem.id)
+          ) {
+            setSolved(true);
+            localStorage.setItem(`problem-${problem.id}-solved`, "true");
+          }
+        })
+        .catch((err) => console.error("Problem page auth error:", err));
+
+      return () => clearTimeout(timer);
     }
   }, [problem]);
 
@@ -109,12 +129,12 @@ export default function ProblemPage() {
         </section>
 
         <div className="solve-section">
-          <a
+          <Link
             href={`/problems/${problem.id}/solve`}
             className="solve-button"
           >
-          Solve Problem →
-</a>
+            Solve Problem →
+          </Link>
         </div>
 
       </div>

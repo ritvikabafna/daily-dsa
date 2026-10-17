@@ -1394,6 +1394,52 @@ testCases: [
       },
     ],
   },
+
+  {
+    id: 32,
+    title: "Remove Duplicates from Sorted Array",
+    topic: "Arrays",
+    difficulty: "Easy",
+    acceptance: 54.8,
+    status: "unsolved",
+
+    description:
+      "Given an integer array nums sorted in non-decreasing order, remove the duplicates in-place such that each unique element appears only once. The relative order of the elements should be kept the same. Output the count of unique elements on the first line, followed by the unique elements separated by space on the second line.",
+
+    examples: [
+      {
+        input: "3\n1 1 2",
+        output: "2\n1 2",
+      },
+      {
+        input: "10\n0 0 1 1 1 2 2 3 3 4",
+        output: "5\n0 1 2 3 4",
+      },
+    ],
+
+    constraints: [
+      "1 <= nums.length <= 3 * 10^4",
+      "-100 <= nums[i] <= 100",
+      "nums is sorted in non-decreasing order.",
+    ],
+
+    tags: ["Array", "Two Pointers"],
+
+    testCases: [
+      {
+        input: "3\n1 1 2",
+        expectedOutput: "2\n1 2",
+      },
+      {
+        input: "10\n0 0 1 1 1 2 2 3 3 4",
+        expectedOutput: "5\n0 1 2 3 4",
+      },
+      {
+        input: "5\n1 2 3 4 5",
+        expectedOutput: "5\n1 2 3 4 5",
+      },
+    ],
+  },
 ];
 
 export default problems;

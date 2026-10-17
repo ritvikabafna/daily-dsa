@@ -7,6 +7,15 @@ import crypto from "crypto";
 const TIME_LIMIT = 5000;
 const OUTPUT_LIMIT = 1024 * 1024;
 const MEMORY_LIMIT = "256m";
+function isDockerDaemonError(stderr) {
+  if (!stderr) return false;
+  return (
+    stderr.includes("docker daemon is not running") ||
+    stderr.includes("error during connect") ||
+    stderr.includes("This error may indicate that the docker daemon is not running") ||
+    stderr.includes("open //./pipe/docker_engine")
+  );
+}
 
 export async function runCpp(code, input = "") {
   const id = crypto.randomUUID();
@@ -50,6 +59,15 @@ MEMORY_LIMIT,
       "",
       TIME_LIMIT
     );
+
+    if (isDockerDaemonError(compileResult.stderr)) {
+      return {
+        success: false,
+        verdict: "SANDBOX_ERROR",
+        output: "",
+        error: "Docker Desktop is not running. Please start Docker Desktop to execute code.",
+      };
+    }
 
     if (compileResult.timedOut) {
       return {
@@ -117,6 +135,15 @@ MEMORY_LIMIT,
       executeResult.exitCode
     );
 
+    if (isDockerDaemonError(executeResult.stderr)) {
+      return {
+        success: false,
+        verdict: "SANDBOX_ERROR",
+        output: "",
+        error: "Docker Desktop is not running. Please start Docker Desktop to execute code.",
+      };
+    }
+
     // =========================
     // OUTPUT LIMIT
     // =========================
@@ -144,21 +171,17 @@ MEMORY_LIMIT,
     }
 
     // =========================
-    // RUNTIME ERROR
+    // MEMORY LIMIT
     // =========================
 
-    // =========================
-// MEMORY LIMIT
-// =========================
-
-if (executeResult.oomKilled) {
-  return {
-    success: false,
-    verdict: "MEMORY_LIMIT_EXCEEDED",
-    output: executeResult.stdout,
-    error: "Program exceeded the memory limit.",
-  };
-}
+    if (executeResult.oomKilled) {
+      return {
+        success: false,
+        verdict: "MEMORY_LIMIT_EXCEEDED",
+        output: executeResult.stdout,
+        error: "Program exceeded the memory limit.",
+      };
+    }
 
     if (executeResult.exitCode !== 0) {
       return {
@@ -179,6 +202,116 @@ if (executeResult.oomKilled) {
       success: true,
       verdict: "EXECUTED",
       output: executeResult.stdout,
+      executionTimeMs: executeResult.executionTimeMs,
+      error: null,
+    };
+  } finally {
+    await removeContainer(containerName);
+
+    await fs.rm(tempDir, {
+      recursive: true,
+      force: true,
+    });
+  }
+}
+
+export async function runPython(code, input = "") {
+  const id = crypto.randomUUID();
+  const containerName = `dsa-py-${id}`;
+
+  const tempDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), `${containerName}-`)
+  );
+
+  const sourcePath = path.join(tempDir, "main.py");
+
+  try {
+    await fs.writeFile(sourcePath, code, "utf8");
+
+    const executeArgs = [
+      "run",
+      "--name",
+      containerName,
+      "-i",
+      "--network",
+      "none",
+      "--memory",
+      MEMORY_LIMIT,
+      "--memory-swap",
+      MEMORY_LIMIT,
+      "--cpus",
+      "1",
+      "--pids-limit",
+      "64",
+      "-v",
+      `${tempDir}:/workspace`,
+      "gcc:latest",
+      "python3",
+      "/workspace/main.py",
+    ];
+
+    const executeResult = await executeDocker(
+      executeArgs,
+      input,
+      TIME_LIMIT,
+      containerName
+    );
+
+    if (isDockerDaemonError(executeResult.stderr)) {
+      return {
+        success: false,
+        verdict: "SANDBOX_ERROR",
+        output: "",
+        error: "Docker Desktop is not running. Please start Docker Desktop to execute code.",
+      };
+    }
+
+    if (executeResult.outputLimitExceeded) {
+      return {
+        success: false,
+        verdict: "OUTPUT_LIMIT_EXCEEDED",
+        output: "",
+        error: "Program produced too much output.",
+      };
+    }
+
+    if (executeResult.timedOut) {
+      return {
+        success: false,
+        verdict: "TIME_LIMIT_EXCEEDED",
+        output: executeResult.stdout,
+        error: "Program exceeded the time limit.",
+      };
+    }
+
+    if (executeResult.oomKilled) {
+      return {
+        success: false,
+        verdict: "MEMORY_LIMIT_EXCEEDED",
+        output: executeResult.stdout,
+        error: "Program exceeded the memory limit.",
+      };
+    }
+
+    if (executeResult.exitCode !== 0) {
+      const isSyntax =
+        executeResult.stderr && executeResult.stderr.includes("SyntaxError");
+
+      return {
+        success: false,
+        verdict: isSyntax ? "COMPILATION_ERROR" : "RUNTIME_ERROR",
+        output: executeResult.stdout,
+        error:
+          executeResult.stderr ||
+          `Program exited with code ${executeResult.exitCode}.`,
+      };
+    }
+
+    return {
+      success: true,
+      verdict: "EXECUTED",
+      output: executeResult.stdout,
+      executionTimeMs: executeResult.executionTimeMs,
       error: null,
     };
   } finally {
@@ -198,6 +331,7 @@ function executeDocker(
   containerName = null
 ) {
   return new Promise((resolve) => {
+    const startTime = Date.now();
     const child = spawn("docker", args, {
       windowsHide: true,
     });
@@ -262,6 +396,7 @@ function executeDocker(
       if (finished) return;
 
       finished = true;
+      const executionTimeMs = Math.max(1, Date.now() - startTime);
 
       resolve({
         stdout,
@@ -269,6 +404,7 @@ function executeDocker(
         exitCode: -1,
         timedOut: false,
         outputLimitExceeded,
+        executionTimeMs,
       });
     });
 
@@ -280,6 +416,7 @@ function executeDocker(
   if (finished) return;
 
   finished = true;
+  const executionTimeMs = Math.max(1, Date.now() - startTime);
 
   let oomKilled = false;
 
@@ -294,6 +431,7 @@ function executeDocker(
     timedOut,
     outputLimitExceeded,
     oomKilled,
+    executionTimeMs,
   });
 });
 

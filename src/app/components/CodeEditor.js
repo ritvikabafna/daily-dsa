@@ -6,12 +6,13 @@ export default function CodeEditor({
   code,
   setCode,
   language,
+  theme = "vs-dark",
 }) {
   return (
     <Editor
       height="100%"
       language={language}
-      theme="vs-dark"
+      theme={theme}
       value={code}
       onChange={(value) => setCode(value || "")}
       options={{

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
 import Features from "./components/Features";
@@ -10,6 +11,7 @@ import problems from "./data/problems";
 
 export default function Home() {
   const [solvedProblems, setSolvedProblems] = useState([]);
+  const [user, setUser] = useState(null);
 
   const today = new Date();
 
@@ -26,16 +28,39 @@ export default function Home() {
     problems[dayNumber % problems.length];
 
   useEffect(() => {
-    const solved = problems
-      .filter(
-        (problem) =>
-          localStorage.getItem(
-            `problem-${problem.id}-solved`
-          ) === "true"
-      )
-      .map((problem) => problem.id);
+    const timer = setTimeout(() => {
+      const solved = problems
+        .filter(
+          (problem) =>
+            localStorage.getItem(
+              `problem-${problem.id}-solved`
+            ) === "true"
+        )
+        .map((problem) => problem.id);
 
-    setSolvedProblems(solved);
+      setSolvedProblems(solved);
+    }, 0);
+
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.user) {
+          setUser(data.user);
+
+          if (Array.isArray(data.user.solvedProblems)) {
+            setSolvedProblems((prev) => [
+              ...new Set([...prev, ...data.user.solvedProblems]),
+            ]);
+
+            data.user.solvedProblems.forEach((id) => {
+              localStorage.setItem(`problem-${id}-solved`, "true");
+            });
+          }
+        }
+      })
+      .catch((err) => console.error(err));
+
+    return () => clearTimeout(timer);
   }, []);
 
   const totalProblems = problems.length;
@@ -59,6 +84,8 @@ export default function Home() {
   return (
     <>
       <Navbar />
+
+     
 
       <Hero />
 
@@ -122,7 +149,7 @@ export default function Home() {
 
             <div className="daily-challenge-header">
               <p className="page-tag">
-                TODAY'S CHALLENGE
+                TODAY&apos;S CHALLENGE
               </p>
 
               <span
@@ -138,12 +165,12 @@ export default function Home() {
               {todayProblem.description}
             </p>
 
-            <a
+            <Link
               href={`/problems/${todayProblem.id}`}
               className="solve-button"
             >
               Solve Challenge →
-            </a>
+            </Link>
 
           </div>
 
