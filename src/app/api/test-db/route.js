@@ -5,19 +5,21 @@ export async function GET() {
     await connectDB();
 
     return Response.json({
-      success: true,
-      message: "MongoDB connected successfully!",
+      status: "healthy",
+      service: "database",
+      timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("MongoDB connection error:", error);
+    console.error("Database health check error:", error.message);
 
     return Response.json(
       {
-        success: false,
-        message: "MongoDB connection failed.",
+        status: "unhealthy",
+        service: "database",
+        error: "Database service unavailable",
       },
       {
-        status: 500,
+        status: 503,
       }
     );
   }

@@ -5,6 +5,9 @@ import Link from "next/link";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import problems from "../data/problems";
+import { analyzeWeakTopics } from "../utils/weakTopicAnalysis";
+import SmartRevisionSection from "../components/SmartRevisionSection";
+import SubmissionAnalyticsSection from "../components/SubmissionAnalyticsSection";
 
 export default function DashboardPage() {
   const [user, setUser] = useState(null);
@@ -22,6 +25,17 @@ export default function DashboardPage() {
         .map((problem) => problem.id);
 
       setSolvedProblems(localSolved);
+
+      try {
+        const localSubs = JSON.parse(
+          localStorage.getItem("daily_dsa_local_submissions") || "[]"
+        );
+        if (Array.isArray(localSubs) && localSubs.length > 0) {
+          setSubmissions((prev) => (prev.length === 0 ? localSubs : prev));
+        }
+      } catch (e) {
+        console.error("Local submissions read error:", e);
+      }
     }, 0);
 
     fetch("/api/auth/me")
@@ -36,12 +50,29 @@ export default function DashboardPage() {
             ]);
           }
 
-          // Fetch recent submissions
-          fetch("/api/submissions")
+          // Fetch recent submissions up to 50 for analytics
+          fetch("/api/submissions?limit=50")
             .then((res) => res.json())
             .then((subData) => {
-              if (subData.success) {
-                setSubmissions(subData.submissions || []);
+              if (subData.success && Array.isArray(subData.submissions)) {
+                try {
+                  const localSubs = JSON.parse(
+                    localStorage.getItem("daily_dsa_local_submissions") || "[]"
+                  );
+                  const merged = [...subData.submissions];
+                  for (const loc of localSubs) {
+                    const exists = merged.some(
+                      (c) =>
+                        c._id === loc._id ||
+                        Math.abs(new Date(c.createdAt).getTime() - new Date(loc.createdAt).getTime()) < 3000
+                    );
+                    if (!exists) merged.push(loc);
+                  }
+                  merged.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                  setSubmissions(merged);
+                } catch {
+                  setSubmissions(subData.submissions);
+                }
               }
             })
             .catch((err) => console.error("Submissions load error:", err));
@@ -121,6 +152,10 @@ export default function DashboardPage() {
   if (currentStreak === 0 && solvedCount > 0) {
     currentStreak = 1;
   }
+
+  // Personalized weak-topic analysis & difficulty-based recommendations
+  const analysis = analyzeWeakTopics(submissions, problems, solvedProblems);
+  const { topicStats, recommendedProblems, hasWeakTopics, totalFailures } = analysis;
 
   return (
     <>
@@ -223,6 +258,146 @@ export default function DashboardPage() {
                 / {topics.length}
               </div>
               <span className="stat-box-sub">Full Mastery</span>
+            </div>
+          </div>
+
+          {/* Smart Revision System & Spaced Repetition */}
+          <SmartRevisionSection
+            solvedProblems={solvedProblems}
+            submissions={submissions}
+            problems={problems}
+          />
+
+          {/* Submission Analytics & Attempt Comparison */}
+          <SubmissionAnalyticsSection
+            submissions={submissions}
+            problems={problems}
+          />
+
+          {/* Personalized Weak-Topic Analysis & Smart Recommendations */}
+          <div className="analysis-dashboard-card">
+            <div className="analysis-header-row">
+              <div>
+                <h3 className="analysis-header-title">
+                  🎯 Personalized Weak-Topic Analysis & Smart Recommendations
+                </h3>
+                <p className="analysis-header-sub">
+                  Analyzes your submission verdicts and failure patterns to recommend optimal next challenges.
+                </p>
+              </div>
+              <div
+                className={`analysis-status-badge ${
+                  hasWeakTopics ? "has-weakness" : "healthy"
+                }`}
+              >
+                {hasWeakTopics ? (
+                  <>⚠️ {totalFailures} Setback{totalFailures === 1 ? "" : "s"} Detected</>
+                ) : (
+                  <>✨ High Accuracy Momentum</>
+                )}
+              </div>
+            </div>
+
+            <div className="analysis-content-grid">
+              {/* Left Column: Topic Diagnostics */}
+              <div>
+                <h4 className="analysis-subcolumn-title">
+                  📊 Topic Diagnostics & Error Patterns
+                </h4>
+                <div className="topic-diagnostics-list">
+                  {topicStats.map((topic) => {
+                    const isNeedsFocus = topic.status === "Needs Focus";
+                    const isMastered = topic.status === "Mastered";
+                    const isProgress = topic.status === "In Progress";
+
+                    return (
+                      <div
+                        key={topic.topic}
+                        className={`topic-diag-item ${isNeedsFocus ? "needs-focus" : ""}`}
+                      >
+                        <div className="topic-diag-header">
+                          <span className="topic-diag-name">{topic.topic}</span>
+                          <span
+                            className={`topic-diag-pill ${
+                              isNeedsFocus
+                                ? "needs-focus"
+                                : isMastered
+                                ? "mastered"
+                                : isProgress
+                                ? "in-progress"
+                                : "not-started"
+                            }`}
+                          >
+                            {isNeedsFocus
+                              ? `Needs Focus (${topic.wrongAttempts} Errors)`
+                              : topic.status}
+                          </span>
+                        </div>
+
+                        <div className="topic-diag-metrics">
+                          <span>
+                            Progress: <strong>{topic.solvedCount}</strong> / {topic.totalProblems} Solved ({topic.solvedPercent}%)
+                          </span>
+                          {topic.totalAttempts > 0 && (
+                            <span className={topic.wrongAttempts > 0 ? "topic-diag-error-stat" : ""}>
+                              {topic.wrongAttempts > 0
+                                ? `${topic.errorRate}% Failure Rate`
+                                : `${topic.accuracy}% Accuracy`}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="topic-diag-bar">
+                          <div
+                            className={`topic-diag-fill ${isNeedsFocus ? "needs-focus" : ""}`}
+                            style={{
+                              width: `${Math.max(5, topic.solvedPercent)}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right Column: Next Recommended Problems */}
+              <div>
+                <h4 className="analysis-subcolumn-title">
+                  💡 Recommended Next Challenges
+                </h4>
+                <div className="recommended-problems-list">
+                  {recommendedProblems.length === 0 ? (
+                    <div style={{ padding: "20px", textAlign: "center", color: "#64748b" }}>
+                      🎉 Outstanding work! You have solved all problems across all catalog topics.
+                    </div>
+                  ) : (
+                    recommendedProblems.map((prob) => (
+                      <div key={prob.id} className="recommended-prob-card">
+                        <div className="rec-prob-top">
+                          <span className="rec-badge-tag">{prob.badge}</span>
+                          <span className={`difficulty ${prob.difficulty.toLowerCase()}`}>
+                            {prob.difficulty}
+                          </span>
+                        </div>
+
+                        <h5 className="rec-prob-title">{prob.title}</h5>
+
+                        <p className="rec-prob-rationale">{prob.rationale}</p>
+
+                        <div className="rec-prob-footer">
+                          <span style={{ fontSize: "12px", color: "#64748b" }}>
+                            Topic: <strong>{prob.topic}</strong>
+                          </span>
+                          <Link href={`/problems/${prob.id}/solve`} className="rec-solve-btn">
+                            Solve Challenge →
+                          </Link>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -368,11 +543,7 @@ export default function DashboardPage() {
                           <td>
                             <Link
                               href={`/problems/${sub.problemId}`}
-                              style={{
-                                color: "#1e293b",
-                                fontWeight: "600",
-                                textDecoration: "none",
-                              }}
+                              className="dashboard-sub-link"
                             >
                               {prob ? prob.title : `Problem #${sub.problemId}`}
                             </Link>
@@ -399,7 +570,7 @@ export default function DashboardPage() {
                               <span style={{ color: "#94a3b8" }}>—</span>
                             )}
                           </td>
-                          <td style={{ color: "#64748b", fontSize: "12px" }}>
+                          <td className="dashboard-table-date">
                             {new Date(sub.createdAt).toLocaleDateString()}
                           </td>
                         </tr>

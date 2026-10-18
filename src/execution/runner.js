@@ -4,16 +4,20 @@ import os from "os";
 import path from "path";
 import crypto from "crypto";
 
-const TIME_LIMIT = 5000;
-const OUTPUT_LIMIT = 1024 * 1024;
-const MEMORY_LIMIT = "256m";
+const COMPILE_TIME_LIMIT = 10000; // 10s for compiler container start and compilation
+const TIME_LIMIT = 5000; // 5s for user code execution
+const OUTPUT_LIMIT = 1024 * 1024; // 1MB max output limit
+const MEMORY_LIMIT = "128m";
+
 function isDockerDaemonError(stderr) {
   if (!stderr) return false;
   return (
     stderr.includes("docker daemon is not running") ||
     stderr.includes("error during connect") ||
     stderr.includes("This error may indicate that the docker daemon is not running") ||
-    stderr.includes("open //./pipe/docker_engine")
+    stderr.includes("open //./pipe/docker_engine") ||
+    stderr.includes("Cannot connect to the Docker daemon") ||
+    stderr.includes("Is the docker daemon running")
   );
 }
 
@@ -31,7 +35,7 @@ export async function runCpp(code, input = "") {
     await fs.writeFile(sourcePath, code, "utf8");
 
     // =========================
-    // COMPILE
+    // COMPILE (Sandboxed)
     // =========================
 
     const compileArgs = [
@@ -40,16 +44,19 @@ export async function runCpp(code, input = "") {
       "--network",
       "none",
       "--memory",
-MEMORY_LIMIT,
+      "256m",
       "--cpus",
       "1",
       "--pids-limit",
-      "64",
+      "32",
+      "--cap-drop=ALL",
+      "--security-opt=no-new-privileges",
       "-v",
       `${tempDir}:/workspace`,
       "gcc:latest",
       "g++",
       "/workspace/main.cpp",
+      "-O2",
       "-o",
       "/workspace/main",
     ];
@@ -57,8 +64,17 @@ MEMORY_LIMIT,
     const compileResult = await executeDocker(
       compileArgs,
       "",
-      TIME_LIMIT
+      COMPILE_TIME_LIMIT
     );
+
+    if (compileResult.isDockerMissing) {
+      return {
+        success: false,
+        verdict: "SANDBOX_ERROR",
+        output: "",
+        error: "Docker is not installed or not found in system PATH.",
+      };
+    }
 
     if (isDockerDaemonError(compileResult.stderr)) {
       return {
@@ -90,29 +106,32 @@ MEMORY_LIMIT,
     }
 
     // =========================
-    // EXECUTE
+    // EXECUTE (Hardened Sandbox)
     // =========================
 
     const executeArgs = [
-  "run",
-  "--name",
-  containerName,
-  "-i",
-  "--network",
-  "none",
-  "--memory",
-  MEMORY_LIMIT,
-  "--memory-swap",
-  MEMORY_LIMIT,
-  "--cpus",
-  "1",
-  "--pids-limit",
-  "64",
-  "-v",
-  `${tempDir}:/workspace`,
-  "gcc:latest",
-  "/workspace/main",
-];
+      "run",
+      "--name",
+      containerName,
+      "-i",
+      "--network",
+      "none",
+      "--memory",
+      MEMORY_LIMIT,
+      "--memory-swap",
+      MEMORY_LIMIT,
+      "--cpus",
+      "1",
+      "--pids-limit",
+      "32",
+      "--cap-drop=ALL",
+      "--security-opt=no-new-privileges",
+      "-v",
+      `${tempDir}:/workspace:ro`, // Read-only mount to prevent file tampering
+      "gcc:latest",
+      "/workspace/main",
+    ];
+
     const executeResult = await executeDocker(
       executeArgs,
       input,
@@ -120,20 +139,14 @@ MEMORY_LIMIT,
       containerName
     );
 
-    console.log(
-      "Execution stdout:",
-      executeResult.stdout
-    );
-
-    console.log(
-      "Execution stderr:",
-      executeResult.stderr
-    );
-
-    console.log(
-      "Execution exit code:",
-      executeResult.exitCode
-    );
+    if (executeResult.isDockerMissing) {
+      return {
+        success: false,
+        verdict: "SANDBOX_ERROR",
+        output: "",
+        error: "Docker is not installed or not found in system PATH.",
+      };
+    }
 
     if (isDockerDaemonError(executeResult.stderr)) {
       return {
@@ -228,6 +241,10 @@ export async function runPython(code, input = "") {
   try {
     await fs.writeFile(sourcePath, code, "utf8");
 
+    // =========================
+    // EXECUTE PYTHON (Hardened Sandbox)
+    // =========================
+
     const executeArgs = [
       "run",
       "--name",
@@ -242,11 +259,14 @@ export async function runPython(code, input = "") {
       "--cpus",
       "1",
       "--pids-limit",
-      "64",
+      "32",
+      "--cap-drop=ALL",
+      "--security-opt=no-new-privileges",
       "-v",
-      `${tempDir}:/workspace`,
+      `${tempDir}:/workspace:ro`, // Read-only mount to prevent writing to disk
       "gcc:latest",
       "python3",
+      "-B", // Don't write .pyc bytecode cache
       "/workspace/main.py",
     ];
 
@@ -256,6 +276,15 @@ export async function runPython(code, input = "") {
       TIME_LIMIT,
       containerName
     );
+
+    if (executeResult.isDockerMissing) {
+      return {
+        success: false,
+        verdict: "SANDBOX_ERROR",
+        output: "",
+        error: "Docker is not installed or not found in system PATH.",
+      };
+    }
 
     if (isDockerDaemonError(executeResult.stderr)) {
       return {
@@ -332,6 +361,8 @@ function executeDocker(
 ) {
   return new Promise((resolve) => {
     const startTime = Date.now();
+    let isDockerMissing = false;
+
     const child = spawn("docker", args, {
       windowsHide: true,
     });
@@ -356,11 +387,6 @@ function executeDocker(
         OUTPUT_LIMIT
       ) {
         outputLimitExceeded = true;
-
-        console.log(
-          "OUTPUT LIMIT EXCEEDED"
-        );
-
         child.kill();
       }
     });
@@ -379,11 +405,6 @@ function executeDocker(
         OUTPUT_LIMIT
       ) {
         outputLimitExceeded = true;
-
-        console.log(
-          "OUTPUT LIMIT EXCEEDED"
-        );
-
         child.kill();
       }
     });
@@ -397,14 +418,18 @@ function executeDocker(
 
       finished = true;
       const executionTimeMs = Math.max(1, Date.now() - startTime);
+      isDockerMissing = error.code === "ENOENT";
 
       resolve({
         stdout,
-        stderr: error.message,
+        stderr: isDockerMissing
+          ? "Docker is not installed or not in PATH."
+          : error.message,
         exitCode: -1,
         timedOut: false,
         outputLimitExceeded,
         executionTimeMs,
+        isDockerMissing,
       });
     });
 
@@ -412,28 +437,29 @@ function executeDocker(
     // PROCESS CLOSE
     // =========================
 
-  child.on("close", async (exitCode) => {
-  if (finished) return;
+    child.on("close", async (exitCode) => {
+      if (finished) return;
 
-  finished = true;
-  const executionTimeMs = Math.max(1, Date.now() - startTime);
+      finished = true;
+      const executionTimeMs = Math.max(1, Date.now() - startTime);
 
-  let oomKilled = false;
+      let oomKilled = false;
 
-  if (containerName) {
-    oomKilled = await checkOOMKilled(containerName);
-  }
+      if (containerName) {
+        oomKilled = await checkOOMKilled(containerName);
+      }
 
-  resolve({
-    stdout,
-    stderr,
-    exitCode,
-    timedOut,
-    outputLimitExceeded,
-    oomKilled,
-    executionTimeMs,
-  });
-});
+      resolve({
+        stdout,
+        stderr,
+        exitCode,
+        timedOut,
+        outputLimitExceeded,
+        oomKilled,
+        executionTimeMs,
+        isDockerMissing,
+      });
+    });
 
     // =========================
     // SEND INPUT
@@ -454,14 +480,8 @@ function executeDocker(
 
       timedOut = true;
 
-      console.log(
-        `TIMEOUT: removing container ${containerName}`
-      );
-
       if (containerName) {
-        await removeContainer(
-          containerName
-        );
+        await removeContainer(containerName);
       }
 
       child.kill();
@@ -497,6 +517,7 @@ function removeContainer(containerName) {
     });
   });
 }
+
 function checkOOMKilled(containerName) {
   return new Promise((resolve) => {
     const inspect = spawn(

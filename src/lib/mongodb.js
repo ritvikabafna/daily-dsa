@@ -1,11 +1,5 @@
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (!MONGODB_URI) {
-  throw new Error("Please define MONGODB_URI in .env.local");
-}
-
 let cached = global.mongoose;
 
 if (!cached) {
@@ -16,15 +10,40 @@ if (!cached) {
 }
 
 export default async function connectDB() {
-  if (cached.conn) {
+  const MONGODB_URI = process.env.MONGODB_URI;
+
+  if (!MONGODB_URI) {
+    const error = new Error("Database configuration missing: MONGODB_URI is not set.");
+    error.isDbConfig = true;
+    throw error;
+  }
+
+  if (cached.conn && mongoose.connection.readyState === 1) {
     return cached.conn;
   }
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI);
+    const opts = {
+      bufferCommands: false,
+      serverSelectionTimeoutMS: 5000, // Fail fast (5s) instead of hanging requests
+    };
+
+    cached.promise = mongoose
+      .connect(MONGODB_URI, opts)
+      .then((mongooseInstance) => {
+        return mongooseInstance;
+      })
+      .catch((err) => {
+        cached.promise = null; // Reset promise so subsequent requests can retry
+        throw err;
+      });
   }
 
-  cached.conn = await cached.promise;
-
-  return cached.conn;
-}   
+  try {
+    cached.conn = await cached.promise;
+    return cached.conn;
+  } catch (e) {
+    cached.promise = null;
+    throw e;
+  }
+}

@@ -1,33 +1,67 @@
 # Daily DSA
 
-Daily DSA is a full-stack algorithmic problem-solving platform built with **Next.js (App Router)** and **React 19**. It allows learners to practice data structures and algorithms with daily challenges, Monaco-powered code editing, automated test case evaluations, and progress tracking.
+Daily DSA is a full-stack algorithmic problem-solving platform and interview preparation system built with **Next.js (App Router)** and **React 19**. It empowers developers to practice data structures and algorithms with real-time compilation, Socratic AI coaching, spaced-repetition revision, and granular submission analytics.
 
 ---
 
-## Features
+## 🌟 Key Features
 
-- **Problem Catalog & Discovery:** Browse 32 curated algorithmic challenges with search, difficulty filtering, status filters (Solved/Unsolved), and `🎲 Pick Random` challenge selector.
-- **Problem Solving Workspace:** Full-featured Monaco code editor with Dark/Light theme switching, 1-click clipboard copy, and guarded starter template reset.
-- **Multi-Language Isolated Execution:** Sandboxed execution for both **C++ (GCC)** and **Python 3** powered by isolated Docker containers with strict memory, CPU, process limits, and network isolation (`--network none`).
-- **Real-Time Execution Profiling:** Live execution runtime benchmarks in milliseconds (`⚡ ms`) per testcase and overall verdict.
-- **Custom Input Sandbox:** Dedicated custom stdin input tab to test arbitrary test cases against standard output.
-- **Canonical Editorial & Reference Solutions:** Built-in solution drawer with $O(N)$ time & space complexity analysis, pro tips, and 1-click `⚡ Insert into Editor` action.
-- **User Dashboard & Streak Heatmap:** Analytics dashboard with 28-day submission activity heatmap grid, daily streak counter (`🔥 X Day Streak`), topic mastery meters, and submission speed history.
-- **Authentication & Cloud Sync:** Hybrid local and cloud persistence with MongoDB Atlas and secure HTTP-only JWT cookies.
+### 🤖 1. Gemini AI Socratic DSA Coach
+- **Instant Mistake Explainer**: When an attempt fails with `WRONG_ANSWER` or `TIME_LIMIT_EXCEEDED`, clicking **`🤖 Explain Mistake with AI`** analyzes your code against the failing testcase and explains *why* the logic broke without spoiling the solution.
+- **Socratic Nudges**: Gentle hints on algorithms, invariant checks, and edge cases.
+- **Code Review & Complexity Audit**: Upon achieving `ACCEPTED`, audits exact Time $O(...)$ and Space $O(...)$ complexity and provides clean-code tips.
+- **Interactive Slide-Over Drawer**: Integrated with quick prompt chips, custom question bar, and copy assistance.
+
+### 📘 2. Canonical Solutions & Editorials (All 32 Problems)
+- **100% Problem Coverage**: Curated reference solutions across Arrays, Strings, Two Pointers, Sliding Window, Binary Search, Linked Lists, Trees, and Dynamic Programming.
+- **Multi-Approach Hierarchy**: Compares Brute Force vs. Optimal patterns with Time & Space complexity proofs.
+- **Dual-Language Implementations**: Full C++ (GCC) and Python 3 source code.
+- **1-Click Insert & Copy**: Instantly insert reference solutions directly into the editor.
+
+### 🔄 3. Smart Spaced-Repetition Revision System (SM-2)
+- **SuperMemo-2 Spaced Learning**: Automatically schedules solved problems for revision before memory decay occurs.
+- **Dynamic Intervals**:
+  - **Hard / Struggled (+2 days)**: Automatically assigned when multiple attempts or repeated errors occur.
+  - **Medium (+5 days)**: For single-mistake solves.
+  - **Easy (+14 days)**: For first-try accepted solves.
+- **Due-for-Revision Queue**: Visual dashboard surfacing overdue and upcoming problems with urgency tags.
+- **Post-Solve Rating**: Log recall feedback (Hard, Good, Easy) directly upon solving.
+
+### 📊 4. Advanced Submission Analytics & Attempt Comparison
+- **Attempt History & Chronology**: Tracks sequential attempts (`#1, #2, #3...`) across C++ and Python.
+- **Runtime Deltas & Speedup**: Computes exact millisecond runtime changes between attempts (e.g., `↓ 4ms faster`, `⚡ 50% speedup`).
+- **Side-by-Side Attempt Comparison**: Compare any two attempts simultaneously to see code changes, runtime differences, and verdicts.
+- **1-Click Code Reopening**: Load any previous attempt's code back into the Monaco editor.
+
+### 🎯 5. Personalized Weak-Topic Recommendations
+- Automatically identifies topic categories with elevated failure rates.
+- Dynamically recommends foundational Easy problems if struggling, or next-level challenges if mastered.
+
+### 🌓 6. Unified Theme System (Dark & Light Mode)
+- Zero-flicker pre-hydration theme initialization via Next.js `beforeInteractive` script.
+- Complete visual parity across Monaco editor, diff views, and AI drawers in both Dark (`#0b0f19`) and Light themes.
+
+### ⚙️ 7. Sandboxed Multi-Language Execution Engine
+- Native C++ (GCC with `-O2`) and Python 3 execution.
+- Strict process sandboxing, 5-second execution timeout, and 1MB output buffer cap.
+- Custom `stdin` mode for interactive debugging.
 
 ---
 
-## Prerequisites
+## 🛠️ Tech Stack
 
-- **Node.js:** v18.18+ or v20+
-- **Docker Desktop:** Required for running the code execution sandbox (`gcc:latest` image).
-- **MongoDB Atlas:** MongoDB database connection URI for user authentication and submission sync.
+- **Framework**: Next.js 16 (App Router with Turbopack) & React 19
+- **AI SDK**: `@google/genai` (Google Gemini 2.5/2.0 Flash)
+- **Code Editor**: Monaco Editor (`@monaco-editor/react`)
+- **Database**: MongoDB Atlas with Mongoose ODM
+- **Authentication**: JWT (JSON Web Tokens) with HTTP-only cookies & `bcryptjs`
+- **Testing**: Node.js Native Test Runner (34 integration tests)
 
 ---
 
-## Getting Started
+## 🚀 Getting Started
 
-### 1. Clone & Install Dependencies
+### 1. Install Dependencies
 ```bash
 npm install
 ```
@@ -37,34 +71,39 @@ Create or verify `.env.local` in the project root:
 ```env
 MONGODB_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret_key
+GEMINI_API_KEY=your_gemini_api_key_here
 ```
+> *Tip: You can get a free Gemini API key in 10 seconds from [Google AI Studio](https://aistudio.google.com).*
 
-### 3. Pull Sandbox Docker Image (Supports C++ and Python 3)
-```bash
-docker pull gcc:latest
-```
-
-### 4. Run the Development Server
+### 3. Run the Development Server
 ```bash
 npm run dev
 ```
-
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## Available Scripts
+## 🧪 Testing & Verification
 
-- `npm run dev`: Starts the Next.js development server with Turbopack.
-- `npm run build`: Compiles an optimized production build.
-- `npm run start`: Runs the Next.js production server.
-- `npm run lint`: Runs ESLint to check for code quality and syntax issues.
+Run the complete automated test suite (34 integration tests):
+```bash
+npm test
+```
+
+Run code quality and linting:
+```bash
+npm run lint
+```
+
+Build for production:
+```bash
+npm run build
+```
 
 ---
 
-## Project Documentation
+## 📖 Architecture & Design Documentation
 
-Detailed architecture specifications, engineering decisions, and roadmap plans are available in the `docs/` folder:
-- [Architecture & Execution Pipeline](docs/ARCHITECTURE.md)
-- [Implementation Plan & Roadmap](docs/IMPLEMENTATION_PLAN.md)
-- [Architecture Decision Records (ADRs)](docs/DECISIONS.md)
+For in-depth documentation on system design, database schemas, execution pipelines, and decision records, see the [`docs/`](./docs) folder:
+- [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md): Comprehensive system architecture & subsystem designs.
+- [`docs/DECISIONS.md`](./docs/DECISIONS.md): Architectural Decision Records (ADRs).

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import ThemeToggle from "./ThemeToggle";
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
@@ -42,6 +43,7 @@ export default function Navbar() {
       </div>
 
       <div className="nav-actions">
+        <ThemeToggle />
         {user ? (
           <>
             <span className="welcome-user">

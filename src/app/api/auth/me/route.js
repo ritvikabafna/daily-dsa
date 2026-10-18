@@ -4,38 +4,79 @@ import connectDB from "../../../../lib/mongodb";
 import User from "../../../../models/User";
 
 export async function GET() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("token")?.value;
+
+  if (!token) {
+    return Response.json(
+      {
+        success: false,
+        message: "Not authenticated.",
+      },
+      {
+        status: 401,
+      }
+    );
+  }
+
+  let decoded;
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
+  } catch (jwtErr) {
+    // Clear expired or invalid cookie
+    cookieStore.delete("token");
 
-    if (!token) {
-      return Response.json(
-        {
-          success: false,
-          message: "Not authenticated.",
-        },
-        {
-          status: 401,
-        }
-      );
-    }
-
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET
+    const isExpired = jwtErr.name === "TokenExpiredError";
+    return Response.json(
+      {
+        success: false,
+        message: isExpired
+          ? "Session has expired. Please log in again."
+          : "Invalid authentication token.",
+      },
+      {
+        status: 401,
+      }
     );
+  }
 
+  if (!decoded?.userId) {
+    cookieStore.delete("token");
+    return Response.json(
+      {
+        success: false,
+        message: "Malformed authentication session.",
+      },
+      {
+        status: 401,
+      }
+    );
+  }
+
+  try {
     await connectDB();
-
-    const user = await User.findById(decoded.userId).select(
-      "-password"
+  } catch (dbErr) {
+    console.error("Database connection failure during auth check:", dbErr.message);
+    return Response.json(
+      {
+        success: false,
+        message: "Database service temporarily unavailable.",
+      },
+      {
+        status: 503,
+      }
     );
+  }
+
+  try {
+    const user = await User.findById(decoded.userId).select("-password");
 
     if (!user) {
+      cookieStore.delete("token");
       return Response.json(
         {
           success: false,
-          message: "User not found.",
+          message: "User account no longer exists.",
         },
         {
           status: 404,
@@ -53,15 +94,15 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("Auth check error:", error);
+    console.error("Auth me error:", error);
 
     return Response.json(
       {
         success: false,
-        message: "Invalid or expired session.",
+        message: "Failed to authenticate session.",
       },
       {
-        status: 401,
+        status: 500,
       }
     );
   }

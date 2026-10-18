@@ -207,7 +207,7 @@ export default function ProblemsPage() {
 
       {hasActiveFilters && (
         <div className="active-filters-bar">
-          <span style={{ fontSize: "12px", color: "#64748b", fontWeight: 600 }}>
+          <span className="active-filters-label">
             Active Filters:
           </span>
           {search && (
