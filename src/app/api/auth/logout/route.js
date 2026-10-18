@@ -4,7 +4,13 @@ export async function POST() {
   try {
     const cookieStore = await cookies();
 
-    cookieStore.delete("token");
+    cookieStore.set("token", "", {
+      path: "/",
+      maxAge: 0,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
 
     return Response.json({
       success: true,
