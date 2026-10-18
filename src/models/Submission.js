@@ -42,6 +42,10 @@ const submissionSchema = new mongoose.Schema(
   }
 );
 
+// Compound indexes for optimal user history and problem attempts lookups
+submissionSchema.index({ userId: 1, createdAt: -1 });
+submissionSchema.index({ userId: 1, problemId: 1, createdAt: -1 });
+
 const Submission =
   mongoose.models.Submission ||
   mongoose.model("Submission", submissionSchema);

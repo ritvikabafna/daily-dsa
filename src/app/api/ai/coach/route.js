@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { aiLimiter, getClientIp } from "../../../../lib/rateLimit.js";
 
 // Supported models in preferred order (Google AI Studio free tier models)
 const CANDIDATE_MODELS = [
@@ -8,6 +9,25 @@ const CANDIDATE_MODELS = [
 ];
 
 export async function POST(req) {
+  // Apply rate limiting (10 requests/min per IP)
+  const clientIp = getClientIp(req);
+  const rateLimitResult = aiLimiter.check(clientIp);
+  if (!rateLimitResult.allowed) {
+    return Response.json(
+      {
+        success: false,
+        error: `AI Coach rate limit reached. Please wait ${rateLimitResult.resetInSeconds} seconds before requesting more hints.`,
+        retryAfter: rateLimitResult.resetInSeconds,
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": rateLimitResult.resetInSeconds.toString(),
+        },
+      }
+    );
+  }
+
   try {
     const body = await req.json();
     const {

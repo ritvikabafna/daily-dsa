@@ -70,12 +70,25 @@ export const executeLimiter = new RateLimiter({
   maxRequests: 15,
 });
 
+// 4. AI Coach rate limiter: Max 10 requests per 60 seconds per IP
+export const aiLimiter = new RateLimiter({
+  windowMs: 60 * 1000,
+  maxRequests: 10,
+});
+
 export function getClientIp(request) {
-  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (!request || !request.headers) {
+    return "127.0.0.1";
+  }
+  const forwardedFor = typeof request.headers.get === "function"
+    ? request.headers.get("x-forwarded-for")
+    : request.headers["x-forwarded-for"];
   if (forwardedFor) {
     return forwardedFor.split(",")[0].trim();
   }
-  const realIp = request.headers.get("x-real-ip");
+  const realIp = typeof request.headers.get === "function"
+    ? request.headers.get("x-real-ip")
+    : request.headers["x-real-ip"];
   if (realIp) {
     return realIp.trim();
   }
