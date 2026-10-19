@@ -24,17 +24,14 @@ export default function Home() {
       (1000 * 60 * 60 * 24)
   );
 
-  const todayProblem =
-    problems[dayNumber % problems.length];
+  const todayProblem = problems[dayNumber % problems.length] || problems[0];
 
   useEffect(() => {
     const timer = setTimeout(() => {
       const solved = problems
         .filter(
           (problem) =>
-            localStorage.getItem(
-              `problem-${problem.id}-solved`
-            ) === "true"
+            localStorage.getItem(`problem-${problem.id}-solved`) === "true"
         )
         .map((problem) => problem.id);
 
@@ -64,78 +61,85 @@ export default function Home() {
   }, []);
 
   const totalProblems = problems.length;
-
   const solvedCount = solvedProblems.length;
-
-  const remainingProblems =
-    totalProblems - solvedCount;
-
+  const remainingProblems = totalProblems - solvedCount;
   const progress =
-    totalProblems === 0
-      ? 0
-      : Math.round(
-          (solvedCount / totalProblems) * 100
-        );
+    totalProblems === 0 ? 0 : Math.round((solvedCount / totalProblems) * 100);
 
-  const topics = [...new Set(
-    problems.map((problem) => problem.topic)
-  )];
+  const topics = [...new Set(problems.map((problem) => problem.topic))];
+  const isTodaySolved = solvedProblems.includes(todayProblem.id);
 
   return (
     <>
       <Navbar />
 
-     
-
       <Hero />
 
-      <section className="dashboard-section">
+      {/* Progress & Daily Challenge Section */}
+      <section className="dashboard-section" aria-label="Daily Practice & Progress">
         <div className="dashboard-container">
-
           <div className="dashboard-header">
-            <p className="page-tag">
-              YOUR PROGRESS
-            </p>
-
-            <h2>Keep improving your DSA</h2>
-
-            <p>
-              Track your progress and keep solving
-              problems every day.
+            <span className="page-tag">PRACTICE OVERVIEW</span>
+            <h2 className="dashboard-heading">
+              Track Your <span className="text-gradient">Daily Mastery</span>
+            </h2>
+            <p className="dashboard-subtext">
+              Consistency beats intensity. Solve at least one problem every day to stay interview-ready.
             </p>
           </div>
 
+          {/* 4 Quick Stat Cards */}
           <div className="dashboard-cards">
-
             <div className="dashboard-card">
-              <span>Total Problems</span>
-              <strong>{totalProblems}</strong>
+              <div className="card-top-row">
+                <span className="card-lbl">Total Problems</span>
+                <span className="card-icon-badge blue">📚</span>
+              </div>
+              <strong className="card-val">{totalProblems}</strong>
+              <span className="card-hint">Curated curriculum</span>
             </div>
 
             <div className="dashboard-card">
-              <span>Solved</span>
-              <strong>{solvedCount}</strong>
+              <div className="card-top-row">
+                <span className="card-lbl">Solved</span>
+                <span className="card-icon-badge emerald">✓</span>
+              </div>
+              <strong className="card-val">{solvedCount}</strong>
+              <span className="card-hint">Verified completions</span>
             </div>
 
             <div className="dashboard-card">
-              <span>Remaining</span>
-              <strong>{remainingProblems}</strong>
+              <div className="card-top-row">
+                <span className="card-lbl">Remaining</span>
+                <span className="card-icon-badge amber">⏳</span>
+              </div>
+              <strong className="card-val">{remainingProblems}</strong>
+              <span className="card-hint">In queue</span>
             </div>
 
             <div className="dashboard-card">
-              <span>Progress</span>
-              <strong>{progress}%</strong>
+              <div className="card-top-row">
+                <span className="card-lbl">Completion</span>
+                <span className="card-icon-badge violet">🚀</span>
+              </div>
+              <strong className="card-val">{progress}%</strong>
+              <span className="card-hint">Overall rate</span>
             </div>
-
           </div>
 
+          {/* Progress Bar Module */}
           <div className="progress-container">
             <div className="progress-header">
-              <span>Overall Progress</span>
-              <span>{progress}%</span>
+              <div className="progress-title-wrap">
+                <span className="progress-label-main">Curriculum Progress</span>
+                <span className="progress-label-sub">
+                  {solvedCount} of {totalProblems} problems mastered
+                </span>
+              </div>
+              <span className="progress-percent-badge">{progress}%</span>
             </div>
 
-            <div className="progress-bar">
+            <div className="progress-bar" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
               <div
                 className="progress-fill"
                 style={{
@@ -145,83 +149,92 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="daily-challenge">
+          {/* Today's Challenge Feature Card */}
+          <div className="daily-challenge-banner">
+            <div className="daily-challenge-left">
+              <div className="daily-challenge-meta">
+                <span className="daily-badge">⚡ TODAY&apos;S CHALLENGE</span>
+                <span
+                  className={`difficulty ${todayProblem.difficulty.toLowerCase()}`}
+                >
+                  {todayProblem.difficulty}
+                </span>
+                <span className="topic-pill">{todayProblem.topic}</span>
+                {isTodaySolved && (
+                  <span className="solved-today-badge">✓ Solved</span>
+                )}
+              </div>
 
-            <div className="daily-challenge-header">
-              <p className="page-tag">
-                TODAY&apos;S CHALLENGE
+              <h3 className="daily-challenge-title">{todayProblem.title}</h3>
+
+              <p className="daily-challenge-desc">
+                {todayProblem.description}
               </p>
 
-              <span
-                className={`difficulty ${todayProblem.difficulty.toLowerCase()}`}
-              >
-                {todayProblem.difficulty}
-              </span>
+              <div className="daily-challenge-tags">
+                {todayProblem.tags?.map((tag) => (
+                  <span className="challenge-tag-chip" key={tag}>
+                    #{tag}
+                  </span>
+                ))}
+              </div>
             </div>
 
-            <h3>{todayProblem.title}</h3>
-
-            <p>
-              {todayProblem.description}
-            </p>
-
-            <Link
-              href={`/problems/${todayProblem.id}`}
-              className="solve-button"
-            >
-              Solve Challenge →
-            </Link>
-
+            <div className="daily-challenge-right">
+              <Link
+                href={`/problems/${todayProblem.id}/solve`}
+                className="solve-daily-btn"
+              >
+                <span>{isTodaySolved ? "Practice Again" : "Solve Challenge"}</span>
+                <span className="btn-arrow">→</span>
+              </Link>
+              <Link
+                href={`/problems/${todayProblem.id}`}
+                className="view-details-link"
+              >
+                View Problem Statement ↗
+              </Link>
+            </div>
           </div>
 
-          <div className="topic-progress">
-
-            <div className="dashboard-header">
-              <p className="page-tag">
-                TOPIC PROGRESS
-              </p>
-
-              <h2>Track your progress by topic</h2>
+          {/* Topic Progress Grid */}
+          <div className="topic-progress-section">
+            <div className="topic-progress-header">
+              <div>
+                <span className="page-tag">ROADMAP BREAKDOWN</span>
+                <h3 className="topic-section-title">Topic-wise Progress</h3>
+              </div>
+              <Link href="/topics" className="view-all-topics-link">
+                View Full Roadmap →
+              </Link>
             </div>
 
             <div className="topic-progress-grid">
-
               {topics.map((topic) => {
-                const topicProblems =
-                  problems.filter(
-                    (problem) =>
-                      problem.topic === topic
-                  );
+                const topicProblems = problems.filter(
+                  (problem) => problem.topic === topic
+                );
 
-                const topicSolved =
-                  topicProblems.filter(
-                    (problem) =>
-                      solvedProblems.includes(
-                        problem.id
-                      )
-                  ).length;
+                const topicSolved = topicProblems.filter((problem) =>
+                  solvedProblems.includes(problem.id)
+                ).length;
 
-                const topicTotal =
-                  topicProblems.length;
+                const topicTotal = topicProblems.length;
 
                 const topicPercentage =
                   topicTotal === 0
                     ? 0
-                    : Math.round(
-                        (topicSolved /
-                          topicTotal) *
-                          100
-                      );
+                    : Math.round((topicSolved / topicTotal) * 100);
 
                 return (
-                  <div
+                  <Link
+                    href={`/problems?topic=${encodeURIComponent(topic)}`}
                     className="topic-card"
                     key={topic}
                   >
                     <div className="topic-card-header">
-                      <strong>{topic}</strong>
-
-                      <span>
+                      <strong className="topic-name">{topic}</strong>
+                      <span className="topic-counts">
                         {topicSolved}/{topicTotal}
                       </span>
                     </div>
@@ -235,17 +248,17 @@ export default function Home() {
                       />
                     </div>
 
-                    <p>
-                      {topicPercentage}% completed
-                    </p>
-                  </div>
+                    <div className="topic-card-footer">
+                      <span className="topic-percent-text">
+                        {topicPercentage}% mastered
+                      </span>
+                      <span className="topic-browse-arrow">→</span>
+                    </div>
+                  </Link>
                 );
               })}
-
             </div>
-
           </div>
-
         </div>
       </section>
 
