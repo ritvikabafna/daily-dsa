@@ -14,6 +14,7 @@ export default function AICoachPanel({
   onApplyCodeSnippet,
 }) {
   const [mode, setMode] = useState(initialMode);
+  const [hintTier, setHintTier] = useState(1);
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState(null);
   const [error, setError] = useState(null);
@@ -29,7 +30,7 @@ export default function AICoachPanel({
     { label: "💡 Nudge without spoiler", prompt: "Give me a small conceptual hint about which algorithm or invariant to think about without writing code." },
   ];
 
-  const handleAsk = async (selectedMode = mode, specificQuestion = null) => {
+  const handleAsk = async (selectedMode = mode, specificQuestion = null, tier = hintTier) => {
     setLoading(true);
     setError(null);
     setNeedsApiKey(false);
@@ -45,6 +46,7 @@ export default function AICoachPanel({
           code,
           language,
           mode: selectedMode,
+          hintTier: tier,
           verdict: lastVerdict,
           failingTestCase,
           userQuestion: specificQuestion || customQuestion,
@@ -112,6 +114,16 @@ export default function AICoachPanel({
         <div className="ai-coach-tabs">
           <button
             type="button"
+            className={`ai-tab-btn ${mode === "tiered_hint" ? "active" : ""}`}
+            onClick={() => {
+              setMode("tiered_hint");
+              handleAsk("tiered_hint", null, hintTier);
+            }}
+          >
+            🌱 3-Tier Hints
+          </button>
+          <button
+            type="button"
             className={`ai-tab-btn ${mode === "explain_mistake" ? "active" : ""}`}
             onClick={() => {
               setMode("explain_mistake");
@@ -128,7 +140,7 @@ export default function AICoachPanel({
               handleAsk("socratic_nudge");
             }}
           >
-            💡 Socratic Nudge
+            💡 Nudge
           </button>
           <button
             type="button"
@@ -141,6 +153,45 @@ export default function AICoachPanel({
             🌟 Complexity & Review
           </button>
         </div>
+
+        {/* 3-Tier Hint Sub-selector when in tiered_hint mode */}
+        {mode === "tiered_hint" && (
+          <div className="ai-hint-tier-bar">
+            <span className="tier-bar-label">Progressive Hint Level:</span>
+            <div className="tier-pills">
+              <button
+                type="button"
+                className={`tier-pill ${hintTier === 1 ? "active" : ""}`}
+                onClick={() => {
+                  setHintTier(1);
+                  handleAsk("tiered_hint", null, 1);
+                }}
+              >
+                🌱 Tier 1: Intuition
+              </button>
+              <button
+                type="button"
+                className={`tier-pill ${hintTier === 2 ? "active" : ""}`}
+                onClick={() => {
+                  setHintTier(2);
+                  handleAsk("tiered_hint", null, 2);
+                }}
+              >
+                🌿 Tier 2: Pattern
+              </button>
+              <button
+                type="button"
+                className={`tier-pill ${hintTier === 3 ? "active" : ""}`}
+                onClick={() => {
+                  setHintTier(3);
+                  handleAsk("tiered_hint", null, 3);
+                }}
+              >
+                🌳 Tier 3: Pseudocode
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Context bar */}
         <div className="ai-coach-context-bar">
@@ -236,7 +287,13 @@ export default function AICoachPanel({
             <div className="ai-coach-response-box">
               <div className="response-header">
                 <span className="response-title">
-                  {mode === "explain_mistake"
+                  {mode === "tiered_hint"
+                    ? hintTier === 1
+                      ? "🌱 Tier 1: Intuition & Mental Model"
+                      : hintTier === 2
+                      ? "🌿 Tier 2: Algorithmic Pattern & Invariant"
+                      : "🌳 Tier 3: Pseudocode & Edge Cases"
+                    : mode === "explain_mistake"
                     ? "🐞 Mistake Analysis & Hint"
                     : mode === "socratic_nudge"
                     ? "💡 Socratic Nudge"

@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import connectDB from "../../../lib/mongodb";
 import User from "../../../models/User";
 import Submission from "../../../models/Submission";
-import { runCpp, runPython } from "../../../execution/runner";
+import { runCpp, runPython, runJavaScript, runJava } from "../../../execution/runner";
 import { evaluateTestCases } from "../../../execution/testRunner";
 import { wrapSolutionWithDriver } from "../../../execution/solutionHarness";
 import problems from "../../data/problems";
@@ -75,11 +75,12 @@ export async function POST(request) {
     }
 
     // Validate language
-    if (language !== "cpp" && language !== "python") {
+    const allowedLangs = ["cpp", "python", "javascript", "java"];
+    if (!allowedLangs.includes(language)) {
       return Response.json(
         {
           success: false,
-          error: "Unsupported language. Supported: C++ (cpp) and Python 3 (python).",
+          error: "Unsupported language. Supported: C++ (cpp), Python 3 (python), JavaScript (javascript), and Java (java).",
         },
         {
           status: 400,
@@ -140,7 +141,13 @@ export async function POST(request) {
       }
     }
 
-    const runnerFn = language === "python" ? runPython : runCpp;
+    const RUNNERS = {
+      cpp: runCpp,
+      python: runPython,
+      javascript: runJavaScript,
+      java: runJava,
+    };
+    const runnerFn = RUNNERS[language] || runCpp;
     const executionCode = wrapSolutionWithDriver(code, numericProblemId, language);
 
     // Handle Custom Input run directly without comparing testcase assertions

@@ -7,6 +7,7 @@ import Hero from "./components/Hero";
 import Features from "./components/Features";
 import Stats from "./components/Stats";
 import Footer from "./components/Footer";
+import SubmissionHeatmap from "./components/SubmissionHeatmap";
 import problems from "./data/problems";
 
 export default function Home() {
@@ -196,6 +197,9 @@ export default function Home() {
               </Link>
             </div>
           </div>
+
+          {/* Submission Heatmap & Mastery Milestones */}
+          <SubmissionHeatmap user={user} solvedCount={solvedCount} />
 
           {/* Topic Progress Grid */}
           <div className="topic-progress-section">

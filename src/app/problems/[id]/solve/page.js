@@ -19,6 +19,7 @@ import {
 import AICoachPanel from "../../../components/AICoachPanel";
 
 import { getStarterTemplate } from "../../../data/starterTemplates";
+import TestcaseVisualizer from "../../../components/TestcaseVisualizer";
 
 function saveLocalSubmission(problemId, language, result, submittedCode) {
   if (typeof window === "undefined") return;
@@ -762,6 +763,8 @@ export default function SolvePage() {
               >
                 <option value="cpp">C++ (GCC)</option>
                 <option value="python">Python 3</option>
+                <option value="java">Java (OpenJDK 17)</option>
+                <option value="javascript">JavaScript (Node.js)</option>
               </select>
 
               <select
@@ -1302,26 +1305,12 @@ export default function SolvePage() {
             {!output && (
               <div className="testcases-idle-preview">
                 <p className="output-placeholder" style={{ marginBottom: "12px" }}>
-                  Run your code to evaluate against all test cases.
+                  Inspect test cases below, or click <strong>&quot;▶ Run Code&quot;</strong> to evaluate against all cases.
                 </p>
-                <div className="testcases-section-title">
-                  Available Test Cases:
-                </div>
-                {problem?.testCases?.map((tc, idx) => (
-                  <div key={idx} className="test-case">
-                    <div className="test-case-header">
-                      <strong>Test Case {idx + 1}</strong>
-                    </div>
-                    <div className="test-details" style={{ marginTop: "6px" }}>
-                      <p>
-                        <strong>Input:</strong> <code>{tc.input}</code>
-                      </p>
-                      <p>
-                        <strong>Expected:</strong> <code>{tc.output}</code>
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                <TestcaseVisualizer
+                  testCases={problem?.testCases || []}
+                  results={null}
+                />
               </div>
             )}
 
@@ -1452,86 +1441,17 @@ export default function SolvePage() {
                       </div>
                     )}
 
-                    <div className="test-results">
-                      {output.results.map((test) => {
-                        const isExpanded =
-                          expandedTests[test.testCase] !== undefined
-                            ? expandedTests[test.testCase]
-                            : !test.passed;
-
-                        return (
-                          <div
-                            className={`test-case ${
-                              test.passed ? "passed" : "failed"
-                            }`}
-                            key={test.testCase}
-                          >
-                            <div
-                              className="test-case-header"
-                              style={{ cursor: "pointer", userSelect: "none" }}
-                              onClick={() =>
-                                setExpandedTests((prev) => ({
-                                  ...prev,
-                                  [test.testCase]: !isExpanded,
-                                }))
-                              }
-                            >
-                              <strong>
-                                {test.passed ? "✅" : "❌"} Test Case {test.testCase}
-                              </strong>
-                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                {test.runtimeMs > 0 && (
-                                  <span className="testcase-runtime">
-                                    {test.runtimeMs} ms
-                                  </span>
-                                )}
-                                <span className="testcase-toggle-label">
-                                  {isExpanded ? "▲ Hide Details" : "▼ View Details"}
-                                </span>
-                              </div>
-                            </div>
-
-                            {isExpanded && (
-                              <div className="test-details">
-                                <p>
-                                  <strong>Input:</strong>{" "}
-                                  <code>{test.input}</code>
-                                </p>
-                                <p>
-                                  <strong>Expected:</strong>{" "}
-                                  <code>{test.expectedOutput}</code>
-                                </p>
-                                <p>
-                                  <strong>Actual Output:</strong>{" "}
-                                  <code>{test.actualOutput || "(No output)"}</code>
-                                </p>
-                                {test.error && (
-                                  <p className="error-message">
-                                    <strong>Error:</strong> {test.error}
-                                  </p>
-                                )}
-                                {!test.passed && (
-                                  <div className="testcase-ai-action-wrap">
-                                    <button
-                                      type="button"
-                                      className="testcase-ai-btn"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setAiFailingTestCase(test);
-                                        setAiCoachMode("explain_mistake");
-                                        setAiCoachOpen(true);
-                                      }}
-                                    >
-                                      🤖 Ask AI: Why did this fail?
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <TestcaseVisualizer
+                      testCases={problem?.testCases || []}
+                      results={output.results}
+                      verdict={output.verdict}
+                      runtimeMs={output.runtimeMs}
+                      onAskAiFailure={(failedCase) => {
+                        setAiFailingTestCase(failedCase);
+                        setAiCoachMode("explain_mistake");
+                        setAiCoachOpen(true);
+                      }}
+                    />
                   </>
                 )
               )}

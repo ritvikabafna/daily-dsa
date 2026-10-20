@@ -4,7 +4,7 @@ import os from "os";
 import path from "path";
 import crypto from "crypto";
 
-const COMPILE_TIME_LIMIT = 10000; // 10s for compiler container start and compilation
+const COMPILE_TIME_LIMIT = 15000; // 15s for compiler container start and compilation
 const TIME_LIMIT = 5000; // 5s for user code execution
 const OUTPUT_LIMIT = 1024 * 1024; // 1MB max output limit
 const MEMORY_LIMIT = "128m";
@@ -547,4 +547,153 @@ function checkOOMKilled(containerName) {
       resolve(false);
     });
   });
+}
+
+function executeProcess(cmd, args, input = "", timeout = TIME_LIMIT, cwd = null) {
+  return new Promise((resolve) => {
+    const startTime = Date.now();
+    let stdout = "";
+    let stderr = "";
+    let timedOut = false;
+    let outputLimitExceeded = false;
+    let finished = false;
+
+    const child = spawn(cmd, args, {
+      cwd: cwd || undefined,
+      windowsHide: true,
+    });
+
+    child.stdout.on("data", (data) => {
+      if (finished) return;
+      stdout += data.toString();
+      if (Buffer.byteLength(stdout, "utf8") > OUTPUT_LIMIT) {
+        outputLimitExceeded = true;
+        child.kill();
+      }
+    });
+
+    child.stderr.on("data", (data) => {
+      if (finished) return;
+      stderr += data.toString();
+      if (Buffer.byteLength(stderr, "utf8") > OUTPUT_LIMIT) {
+        outputLimitExceeded = true;
+        child.kill();
+      }
+    });
+
+    child.on("error", (err) => {
+      if (finished) return;
+      finished = true;
+      resolve({
+        success: false,
+        verdict: "SANDBOX_ERROR",
+        output: stdout,
+        error: `${cmd} execution failed: ${err.message}`,
+        exitCode: -1,
+        executionTimeMs: Math.max(1, Date.now() - startTime),
+      });
+    });
+
+    child.on("close", (exitCode) => {
+      if (finished) return;
+      finished = true;
+      const executionTimeMs = Math.max(1, Date.now() - startTime);
+
+      if (outputLimitExceeded) {
+        resolve({
+          success: false,
+          verdict: "OUTPUT_LIMIT_EXCEEDED",
+          output: "",
+          error: "Program produced too much output.",
+          exitCode,
+          executionTimeMs,
+        });
+        return;
+      }
+
+      if (timedOut) {
+        resolve({
+          success: false,
+          verdict: "TIME_LIMIT_EXCEEDED",
+          output: stdout,
+          error: "Program exceeded the time limit.",
+          exitCode,
+          executionTimeMs,
+        });
+        return;
+      }
+
+      if (exitCode !== 0) {
+        const isSyntax =
+          (stderr && (stderr.includes("SyntaxError") || stderr.includes("error:"))) || false;
+        resolve({
+          success: false,
+          verdict: isSyntax ? "COMPILATION_ERROR" : "RUNTIME_ERROR",
+          output: stdout,
+          error: stderr || `Process exited with code ${exitCode}.`,
+          exitCode,
+          executionTimeMs,
+        });
+        return;
+      }
+
+      resolve({
+        success: true,
+        verdict: "EXECUTED",
+        output: stdout,
+        error: null,
+        exitCode: 0,
+        executionTimeMs,
+      });
+    });
+
+    if (input) {
+      child.stdin.write(input);
+    }
+    child.stdin.end();
+
+    const timer = setTimeout(() => {
+      if (finished) return;
+      timedOut = true;
+      child.kill();
+    }, timeout);
+
+    child.on("close", () => clearTimeout(timer));
+  });
+}
+
+export async function runJavaScript(code, input = "") {
+  const id = crypto.randomUUID();
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), `dsa-js-${id}-`));
+  const sourcePath = path.join(tempDir, "solution.js");
+
+  try {
+    await fs.writeFile(sourcePath, code, "utf8");
+    return await executeProcess("node", [sourcePath], input, TIME_LIMIT, tempDir);
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+}
+
+export async function runJava(code, input = "") {
+  const id = crypto.randomUUID();
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), `dsa-java-${id}-`));
+  const sourcePath = path.join(tempDir, "Main.java");
+
+  try {
+    await fs.writeFile(sourcePath, code, "utf8");
+    const compileResult = await executeProcess("javac", ["Main.java"], "", COMPILE_TIME_LIMIT, tempDir);
+    if (compileResult.exitCode !== 0) {
+      return {
+        success: false,
+        verdict: "COMPILATION_ERROR",
+        output: "",
+        error: compileResult.error || compileResult.stderr || "Java compilation failed.",
+      };
+    }
+
+    return await executeProcess("java", ["-Xmx128m", "Main"], input, TIME_LIMIT, tempDir);
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
 }

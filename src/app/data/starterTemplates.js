@@ -411,11 +411,22 @@ public:
   python: `class Solution:
     # Write your solution here
     pass
+`,
+  javascript: `/**
+ * @return {any}
+ */
+var solution = function(...args) {
+    // Write your JavaScript solution here
+};
+`,
+  java: `class Solution {
+    // Write your Java solution here
+}
 `
 };
 
 export function getStarterTemplate(problemId, language = "cpp") {
-  const normalizedLang = language === "python" ? "python" : "cpp";
+  const normalizedLang = ["python", "javascript", "java"].includes(language) ? language : "cpp";
   const problemMeta = PROBLEM_TEMPLATES[problemId];
   if (problemMeta && problemMeta[normalizedLang]) {
     return problemMeta[normalizedLang];

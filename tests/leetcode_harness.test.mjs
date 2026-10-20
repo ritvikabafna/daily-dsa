@@ -86,4 +86,47 @@ int main() {
     const wrapped = wrapSolutionWithDriver(rawCpp, 1, "cpp");
     assert.equal(wrapped, rawCpp, "Solutions with existing main() must not be modified");
   });
+
+  it("should correctly compute token diffs for expected vs actual outputs", async () => {
+    const { computeTokenDiff } = await import("../src/utils/diffViewer.js");
+    const diffMatch = computeTokenDiff("0 1", "0 1");
+    assert.equal(diffMatch.isIdentical, true);
+    assert.equal(diffMatch.expectedTokens[0].status, "match");
+
+    const diffMismatch = computeTokenDiff("0 1", "0 2");
+    assert.equal(diffMismatch.isIdentical, false);
+    assert.equal(diffMismatch.actualTokens[1].status, "actual-diff");
+    assert.equal(diffMismatch.expectedTokens[1].status, "expected-diff");
+  });
+
+  it("should execute JavaScript solutions directly via runner", async () => {
+    const { runJavaScript } = await import("../src/execution/runner.js");
+    const jsCode = `
+      const fs = require('fs');
+      const input = fs.readFileSync(0, 'utf-8').trim().split(/\\s+/);
+      console.log(Number(input[0]) * 2);
+    `;
+    const res = await runJavaScript(jsCode, "21");
+    assert.equal(res.success, true);
+    assert.equal(res.verdict, "EXECUTED");
+    assert.equal(res.output.trim(), "42");
+  });
+
+  it("should compile and execute Java solutions directly via runner", async () => {
+    const { runJava } = await import("../src/execution/runner.js");
+    const javaCode = `
+      import java.util.Scanner;
+      public class Main {
+          public static void main(String[] args) {
+              Scanner sc = new Scanner(System.in);
+              int n = sc.nextInt();
+              System.out.println(n * 3);
+          }
+      }
+    `;
+    const res = await runJava(javaCode, "7");
+    assert.equal(res.success, true);
+    assert.equal(res.verdict, "EXECUTED");
+    assert.equal(res.output.trim(), "21");
+  });
 });

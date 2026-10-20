@@ -41,6 +41,7 @@ export async function POST(req) {
       failingTestCase,
       userQuestion,
       sessionApiKey, // Optional key passed from client session if not yet in .env
+      hintTier = 1, // 1 | 2 | 3 for progressive hint reveals
     } = body;
 
     const apiKey =
@@ -72,7 +73,37 @@ Your mission is to guide students Socratically:
 
     let userPrompt = "";
 
-    if (mode === "explain_mistake") {
+    if (mode === "tiered_hint") {
+      const tierInt = Number(hintTier) || 1;
+      userPrompt = `Problem: ${problemTitle || "DSA Problem"}
+Description:
+${problemDescription || "N/A"}
+
+Student's Language: ${language}
+Current Code:
+\`\`\`${language}
+${code || "// Starter code"}
+\`\`\`
+
+Requested Hint Tier: Tier ${tierInt} of 3
+${
+  tierInt === 1
+    ? `Task (Tier 1: Intuition & High-Level Metaphor):
+1. Give a real-world metaphor or mental picture of how to simplify this problem.
+2. What are we really searching for or maintaining as we iterate?
+3. Ask 1 guiding question to help them realize the right direction.
+4. Do NOT mention algorithm names or write any code.`
+    : tierInt === 2
+    ? `Task (Tier 2: Pattern & Algorithmic Invariant):
+1. Identify the core data structure or algorithmic technique (e.g. Two Pointers, Hash Table, Monotonic Stack, Sliding Window, DP).
+2. Explain the invariant or state that must hold true at every iteration.
+3. Explain why the naive brute-force is too slow and how this technique avoids redundant work.`
+    : `Task (Tier 3: Pseudocode & Edge Case Traps):
+1. Provide a step-by-step numbered pseudocode outline.
+2. Highlight 2 critical edge cases or trap cases (e.g. empty inputs, duplicate values, boundary indices, integer overflow).
+3. Do NOT provide complete copy-paste code in ${language}, keep it strictly pseudocode.`
+}`;
+    } else if (mode === "explain_mistake") {
       userPrompt = `Problem: ${problemTitle || "DSA Problem"}
 Description:
 ${problemDescription || "N/A"}
