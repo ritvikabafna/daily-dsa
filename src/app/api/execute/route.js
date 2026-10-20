@@ -5,6 +5,7 @@ import User from "../../../models/User";
 import Submission from "../../../models/Submission";
 import { runCpp, runPython } from "../../../execution/runner";
 import { evaluateTestCases } from "../../../execution/testRunner";
+import { wrapSolutionWithDriver } from "../../../execution/solutionHarness";
 import problems from "../../data/problems";
 import { executeLimiter, getClientIp } from "../../../lib/rateLimit";
 
@@ -140,10 +141,11 @@ export async function POST(request) {
     }
 
     const runnerFn = language === "python" ? runPython : runCpp;
+    const executionCode = wrapSolutionWithDriver(code, numericProblemId, language);
 
     // Handle Custom Input run directly without comparing testcase assertions
     if (typeof customInput === "string") {
-      const customResult = await runnerFn(code, customInput);
+      const customResult = await runnerFn(executionCode, customInput);
 
       return Response.json({
         success: customResult.success,
@@ -170,7 +172,7 @@ export async function POST(request) {
     }
 
     const evaluation = await evaluateTestCases(testCases, async (testCase) => {
-      return await runnerFn(code, testCase.input);
+      return await runnerFn(executionCode, testCase.input);
     });
 
     let savedToCloud = false;

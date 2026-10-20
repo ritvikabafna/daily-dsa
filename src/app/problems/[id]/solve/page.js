@@ -18,29 +18,7 @@ import {
 } from "../../../utils/submissionAnalytics";
 import AICoachPanel from "../../../components/AICoachPanel";
 
-const STARTER_TEMPLATES = {
-  cpp: `#include <iostream>
-using namespace std;
-
-int main() {
-    // Read input and print solution
-    
-    return 0;
-}`,
-  python: `import sys
-
-def main():
-    # Read all inputs from standard input
-    input_data = sys.stdin.read().split()
-    if not input_data:
-        return
-
-    # Solve the problem and print output
-    pass
-
-if __name__ == "__main__":
-    main()`,
-};
+import { getStarterTemplate } from "../../../data/starterTemplates";
 
 function saveLocalSubmission(problemId, language, result, submittedCode) {
   if (typeof window === "undefined") return;
@@ -167,8 +145,8 @@ export default function SolvePage() {
   };
 
   const handleResetCode = () => {
-    if (confirm("Reset code back to original starter template?")) {
-      const template = STARTER_TEMPLATES[language] || "";
+    if (confirm("Reset code back to original LeetCode starter template?")) {
+      const template = getStarterTemplate(problemId, language);
       setCode(template);
       if (problemId) {
         localStorage.setItem(`problem-${problemId}-${language}-code`, template);
@@ -345,7 +323,7 @@ export default function SolvePage() {
       } else if (language === "cpp" && legacyCode !== null) {
         setCode(legacyCode);
       } else {
-        setCode(STARTER_TEMPLATES[language] || "");
+        setCode(getStarterTemplate(problemId, language));
       }
     }, 0);
 
@@ -363,9 +341,9 @@ export default function SolvePage() {
       setCode(saved);
     } else if (newLanguage === "cpp") {
       const legacy = localStorage.getItem(`problem-${problemId}-code`);
-      setCode(legacy !== null ? legacy : STARTER_TEMPLATES.cpp);
+      setCode(legacy !== null ? legacy : getStarterTemplate(problemId, "cpp"));
     } else {
-      setCode(STARTER_TEMPLATES[newLanguage] || "");
+      setCode(getStarterTemplate(problemId, newLanguage));
     }
   };
 
