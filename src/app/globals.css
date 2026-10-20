@@ -2097,23 +2097,29 @@ button {
 
 .solve-workspace {
   max-width: 1400px;
+  width: 100%;
   margin: auto;
   display: grid;
-  grid-template-columns: 40% 60%;
-  height: calc(100vh - 120px);
-  min-height: 600px;
+  grid-template-columns: 42% 58%;
+  height: calc(100vh - 110px);
+  min-height: 620px;
+  max-height: calc(100vh - 110px);
   background: white;
   border: 1px solid #ddd;
   border-radius: 12px;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 /* ================= LEFT PROBLEM PANEL ================= */
 
 .problem-panel {
-  padding: 30px;
+  height: 100%;
+  max-height: 100%;
   overflow-y: auto;
+  padding: 24px 28px;
   border-right: 1px solid #ddd;
+  box-sizing: border-box;
 }
 
 .problem-panel h2 {
@@ -2179,9 +2185,13 @@ button {
 /* ================= EDITOR ================= */
 
 .editor-panel {
+  height: 100%;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   background: #111827;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .editor-header {
@@ -2293,10 +2303,14 @@ button {
 /* ================= OUTPUT ================= */
 
 .output-panel {
-  margin-top: 20px;
-  padding: 20px;
+  flex: 1 1 45%;
+  min-height: 180px;
+  overflow-y: auto;
+  margin-top: 0;
+  padding: 16px 20px;
   background: #f8f9fa;
   border-top: 1px solid #ddd;
+  box-sizing: border-box;
 }
 
 .result-summary {
@@ -2578,16 +2592,36 @@ button {
   .solve-workspace {
     grid-template-columns: 1fr;
     height: auto;
+    max-height: none;
+    overflow: visible;
   }
 
   .problem-panel {
-    max-height: 500px;
+    height: auto;
+    max-height: 520px;
     border-right: none;
     border-bottom: 1px solid #ddd;
+    overflow-y: auto;
   }
 
   .editor-panel {
+    height: auto;
+    max-height: none;
     min-height: 600px;
+    overflow: visible;
+  }
+
+  .monaco-container {
+    height: 420px;
+    min-height: 350px;
+    max-height: 500px;
+    flex: none;
+  }
+
+  .output-panel {
+    min-height: 250px;
+    max-height: 450px;
+    flex: none;
   }
 
   .solve-header h1 {
@@ -2612,52 +2646,19 @@ button {
 }
 
 .monaco-container {
-  flex: 1;
-  min-height: 400px;
+  flex: 1 1 50%;
+  height: 380px;
+  min-height: 240px;
+  max-height: 52vh;
   overflow: hidden;
-}
-
-html,
-body {
-  height: 100%;
-  overflow-y: auto;
+  position: relative;
 }
 
 .solve-page {
   min-height: 100vh;
-  overflow-y: auto;
-}
-
-.solve-workspace {
-  min-height: 0;
-}
-html,
-body {
-  min-height: 100%;
-  height: auto;
-  overflow-y: auto !important;
-}
-
-.solve-page {
-  min-height: 100vh;
-  height: auto !important;
-  overflow: visible !important;
-}
-
-.solve-workspace {
-  height: auto !important;
-  min-height: 600px;
-  overflow: visible !important;
-}
-
-.editor-panel {
-  height: auto !important;
-  overflow: visible !important;
-}
-
-.output-panel {
-  height: auto !important;
-  overflow: visible !important;
+  background: #f5f6fa;
+  padding: 20px 25px;
+  box-sizing: border-box;
 }
 
 /* =========================
