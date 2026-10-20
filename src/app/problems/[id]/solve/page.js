@@ -572,25 +572,36 @@ export default function SolvePage() {
 
             {showHints && (
               <div className="hints-content-box">
-                <div className="hint-item">
-                  <strong>Hint 1: Data Structure Choice</strong>
-                  <p>
-                    {problem.tags?.includes("Hash Table")
-                      ? "A Hash Table provides O(1) average lookup. Can you store seen values or complements as you traverse?"
-                      : problem.tags?.includes("Two Pointers")
-                      ? "Consider using two pointers from opposite ends or sliding a window to avoid nested iterations."
-                      : problem.tags?.includes("Linked List")
-                      ? "Trace pointer references carefully. A dummy head node often simplifies edge cases like removing nodes."
-                      : "Consider breaking down the brute-force approach first, then identify repeated sub-computations."}
-                  </p>
-                </div>
+                {problem.hints && problem.hints.length > 0 ? (
+                  problem.hints.map((hintText, idx) => (
+                    <div className="hint-item" key={idx}>
+                      <strong>Hint {idx + 1}</strong>
+                      <p>{hintText}</p>
+                    </div>
+                  ))
+                ) : (
+                  <>
+                    <div className="hint-item">
+                      <strong>Hint 1: Data Structure Choice</strong>
+                      <p>
+                        {problem.tags?.includes("Hash Table")
+                          ? "A Hash Table provides O(1) average lookup. Can you store seen values or complements as you traverse?"
+                          : problem.tags?.includes("Two Pointers")
+                          ? "Consider using two pointers from opposite ends or sliding a window to avoid nested iterations."
+                          : problem.tags?.includes("Linked List")
+                          ? "Trace pointer references carefully. A dummy head node often simplifies edge cases like removing nodes."
+                          : "Consider breaking down the brute-force approach first, then identify repeated sub-computations."}
+                      </p>
+                    </div>
 
-                <div className="hint-item">
-                  <strong>Hint 2: Complexity Target</strong>
-                  <p>
-                    Aim for <code>O(N)</code> or <code>O(N log N)</code> time complexity. Avoid nested loops (<code>O(N²)</code>) which may cause Time Limit Exceeded on larger inputs.
-                  </p>
-                </div>
+                    <div className="hint-item">
+                      <strong>Hint 2: Complexity Target</strong>
+                      <p>
+                        Aim for <code>O(N)</code> or <code>O(N log N)</code> time complexity. Avoid nested loops (<code>O(N²)</code>) which may cause Time Limit Exceeded on larger inputs.
+                      </p>
+                    </div>
+                  </>
+                )}
 
                 <div className="hints-ai-cta">
                   <button
