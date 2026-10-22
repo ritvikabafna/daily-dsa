@@ -16,12 +16,90 @@ function isDockerDaemonError(stderr) {
     stderr.includes("error during connect") ||
     stderr.includes("This error may indicate that the docker daemon is not running") ||
     stderr.includes("open //./pipe/docker_engine") ||
+    stderr.includes("open //./pipe/dockerDesktopLinuxEngine") ||
+    stderr.includes("failed to connect to the docker API") ||
     stderr.includes("Cannot connect to the Docker daemon") ||
     stderr.includes("Is the docker daemon running")
   );
 }
 
+let dockerAvailable = null;
+
+async function checkDocker() {
+  if (process.env.DISABLE_DOCKER === "true") {
+    return false;
+  }
+  if (dockerAvailable !== null) {
+    return dockerAvailable;
+  }
+
+  return new Promise((resolve) => {
+    const child = spawn("docker", ["info"], {
+      windowsHide: true,
+      stdio: ["ignore", "ignore", "ignore"],
+    });
+
+    const timer = setTimeout(() => {
+      try {
+        child.kill();
+      } catch {}
+      dockerAvailable = false;
+      resolve(false);
+    }, 1500);
+
+    child.on("error", () => {
+      clearTimeout(timer);
+      dockerAvailable = false;
+      resolve(false);
+    });
+
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      dockerAvailable = code === 0;
+      resolve(dockerAvailable);
+    });
+  });
+}
+
+export async function runCppDirect(code, input = "") {
+  const id = crypto.randomUUID();
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), `dsa-cpp-${id}-`));
+  const sourcePath = path.join(tempDir, "main.cpp");
+  const binaryName = process.platform === "win32" ? "main.exe" : "main";
+  const binaryPath = path.join(tempDir, binaryName);
+
+  try {
+    await fs.writeFile(sourcePath, code, "utf8");
+
+    const compileResult = await executeProcess(
+      "g++",
+      ["-O2", "-std=c++17", "main.cpp", "-o", binaryName],
+      "",
+      COMPILE_TIME_LIMIT,
+      tempDir
+    );
+
+    if (compileResult.exitCode !== 0) {
+      return {
+        success: false,
+        verdict: "COMPILATION_ERROR",
+        output: "",
+        error: compileResult.error || compileResult.stderr || "Compilation failed.",
+      };
+    }
+
+    return await executeProcess(binaryPath, [], input, TIME_LIMIT, tempDir);
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+}
+
 export async function runCpp(code, input = "") {
+  const hasDocker = await checkDocker();
+  if (!hasDocker) {
+    return await runCppDirect(code, input);
+  }
+
   const id = crypto.randomUUID();
   const containerName = `dsa-${id}`;
 
@@ -67,22 +145,9 @@ export async function runCpp(code, input = "") {
       COMPILE_TIME_LIMIT
     );
 
-    if (compileResult.isDockerMissing) {
-      return {
-        success: false,
-        verdict: "SANDBOX_ERROR",
-        output: "",
-        error: "Docker is not installed or not found in system PATH.",
-      };
-    }
-
-    if (isDockerDaemonError(compileResult.stderr)) {
-      return {
-        success: false,
-        verdict: "SANDBOX_ERROR",
-        output: "",
-        error: "Docker Desktop is not running. Please start Docker Desktop to execute code.",
-      };
+    if (compileResult.isDockerMissing || isDockerDaemonError(compileResult.stderr)) {
+      dockerAvailable = false;
+      return await runCppDirect(code, input);
     }
 
     if (compileResult.timedOut) {
@@ -139,22 +204,9 @@ export async function runCpp(code, input = "") {
       containerName
     );
 
-    if (executeResult.isDockerMissing) {
-      return {
-        success: false,
-        verdict: "SANDBOX_ERROR",
-        output: "",
-        error: "Docker is not installed or not found in system PATH.",
-      };
-    }
-
-    if (isDockerDaemonError(executeResult.stderr)) {
-      return {
-        success: false,
-        verdict: "SANDBOX_ERROR",
-        output: "",
-        error: "Docker Desktop is not running. Please start Docker Desktop to execute code.",
-      };
+    if (executeResult.isDockerMissing || isDockerDaemonError(executeResult.stderr)) {
+      dockerAvailable = false;
+      return await runCppDirect(code, input);
     }
 
     // =========================
@@ -228,7 +280,54 @@ export async function runCpp(code, input = "") {
   }
 }
 
+export async function runPythonDirect(code, input = "") {
+  const id = crypto.randomUUID();
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), `dsa-py-${id}-`));
+  const sourcePath = path.join(tempDir, "main.py");
+
+  try {
+    await fs.writeFile(sourcePath, code, "utf8");
+
+    let pythonCmd = "python3";
+    if (process.platform === "win32") {
+      pythonCmd = "python";
+    }
+
+    let executeResult = await executeProcess(
+      pythonCmd,
+      ["-B", "main.py"],
+      input,
+      TIME_LIMIT,
+      tempDir
+    );
+
+    if (
+      !executeResult.success &&
+      executeResult.error &&
+      executeResult.error.includes("ENOENT")
+    ) {
+      const fallbackCmd = pythonCmd === "python3" ? "python" : "python3";
+      executeResult = await executeProcess(
+        fallbackCmd,
+        ["-B", "main.py"],
+        input,
+        TIME_LIMIT,
+        tempDir
+      );
+    }
+
+    return executeResult;
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+}
+
 export async function runPython(code, input = "") {
+  const hasDocker = await checkDocker();
+  if (!hasDocker) {
+    return await runPythonDirect(code, input);
+  }
+
   const id = crypto.randomUUID();
   const containerName = `dsa-py-${id}`;
 
@@ -277,22 +376,9 @@ export async function runPython(code, input = "") {
       containerName
     );
 
-    if (executeResult.isDockerMissing) {
-      return {
-        success: false,
-        verdict: "SANDBOX_ERROR",
-        output: "",
-        error: "Docker is not installed or not found in system PATH.",
-      };
-    }
-
-    if (isDockerDaemonError(executeResult.stderr)) {
-      return {
-        success: false,
-        verdict: "SANDBOX_ERROR",
-        output: "",
-        error: "Docker Desktop is not running. Please start Docker Desktop to execute code.",
-      };
+    if (executeResult.isDockerMissing || isDockerDaemonError(executeResult.stderr)) {
+      dockerAvailable = false;
+      return await runPythonDirect(code, input);
     }
 
     if (executeResult.outputLimitExceeded) {
@@ -647,10 +733,13 @@ function executeProcess(cmd, args, input = "", timeout = TIME_LIMIT, cwd = null)
       });
     });
 
-    if (input) {
-      child.stdin.write(input);
+    if (child.stdin) {
+      child.stdin.on("error", () => {});
+      if (input) {
+        child.stdin.write(input);
+      }
+      child.stdin.end();
     }
-    child.stdin.end();
 
     const timer = setTimeout(() => {
       if (finished) return;
